@@ -122,8 +122,8 @@ class Grid:
         if self.can_fit(grid, x, y):
             o_width = grid.get_width()
             o_height = grid.get_height()
-            for oj, j in zip(range(o_width), range(y, o_height + y)):
-                for oi, i in zip(range(o_height), range(x, o_width + x)):
+            for oj, j in zip(range(o_height), range(y, o_height + y)):
+                for oi, i in zip(range(o_width), range(x, o_width + x)):
                     o = grid.get_at(oi, oj)
                     base = self.get_at(i, j)
                     if base != 0 and o != 0:

@@ -116,11 +116,12 @@ class PlayField:
         """
         Spawn next block. Chooses random if i < 0.
         """
-        self._active = ActiveBlock(*self._spawn_position,
-            self._get_random_block() if i < 0 else self._blocks[i])
+        block = self._get_random_block() if i < 0 else list(self._blocks)[i]
+        self._active = ActiveBlock(*self._spawn_position, block)
 
     def _get_random_block(self):
-        return choice(self._blocks)
+        result = choice(list(self._blocks.keys()))
+        return self._blocks[result]
 
     def get_view(self) -> Grid:
         """
@@ -142,17 +143,27 @@ class PlayField:
             if not self._field.has_conflict(active_copy.get_grid(),
                 active_copy.x, active_copy.y):
                 return active_copy
+        else:
+            raise ValueError("Cannot try step if None")
         return None
 
     def step(self, step: Step) -> bool:
         """
         Attempt a given Step. Returns True if successful and updates
-        the active block.
+        the active block. False if cannot perform movement, and if
+        step type is "vertical", will automatically merge to playfield
+        and spawn new block.
         """
         result = self._try_step(step)
         if result is not None:
             self._active = result
             return True
+        else:
+            # Vertical conflict means time to place in field
+            if step.get_type() == "vertical":
+                self._field.merge(self._active.get_grid(),
+                    *self._active.get_position())
+                self.spawn()
         return False
 
     def get_width(self):

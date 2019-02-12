@@ -53,7 +53,6 @@ class TestPlayField(unittest.TestCase):
         filled._field.fill_row(2, 1) # 3rd row from top is filled
         self.assertIsNone(filled._try_step(DOWN))
         self.assertFalse(filled.step(DOWN))
-        self.assertTrue(filled.step(LEFT))
 
     def test_get_view(self):
         empty = self.get_empty()
