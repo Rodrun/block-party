@@ -30,9 +30,17 @@ class Grid:
         elif len(data[0]) < 1:
             raise ValueError("'data' columns must be length >= 1")
         else:
-            result = cls(1, 1)
-            result._grid = data
+            result = cls(len(data), len(data[0]))
+            for j in range(len(data)):
+                result._grid[j] = data[j][:]
             return result
+
+    @classmethod
+    def from_grid(cls, grid: Grid):
+        return Grid.from_data(grid._grid)
+
+    def __eq__(self, other: Grid):
+        return self._grid == other._grid
 
     def __str__(self):
         return "w: {} x h: {} :: {}" \
@@ -79,7 +87,7 @@ class Grid:
                     # Don't overwrite non-0 from subgrid if subgrid val is 0
                     if transparent and value == 0:
                         continue
-                    self._grid[i][j] = value
+                    self._grid[y + i][x + j] = value
         else:
             raise ValueError(("Subgrid (w {w}, h {h}) cannot fit into parent grid" +
                 " at point (x {x}, y {y})").format(w=w, h=h, x=x, y=y))
@@ -109,14 +117,16 @@ class Grid:
         positions. However, a zero in the given grid is not
         conflicting if the parent grid has a non-zero in the same
         position. A grid that ends up being out of bounds or too
-        large to merge is also considered conflicting.]
+        large to merge is also considered conflicting.
         """
         if self.can_fit(grid, x, y):
             o_width = grid.get_width()
             o_height = grid.get_height()
-            for oj, j in zip(range(o_width), range(y, o_height)):
-                for oi, i in zip(range(o_height), range(x, o_width)):
-                    if grid.get_at(oi, oj) and self.get_at(i, j):
+            for oj, j in zip(range(o_width), range(y, o_height + y)):
+                for oi, i in zip(range(o_height), range(x, o_width + x)):
+                    o = grid.get_at(oi, oj)
+                    base = self.get_at(i, j)
+                    if base != 0 and o != 0:
                         return True
         else:
             return True
@@ -126,7 +136,7 @@ class Grid:
         """
         Rotate 90 degrees clockwise, n amount of times.
         """
-        for _ in range(n):
+        for _ in range(abs(n)):
             dim = self.get_dimensions()
             result = Grid(dim[0], dim[1])
             colIndex = result.get_width()
@@ -206,3 +216,9 @@ class Grid:
             if value == 0:
                 return False
         return True
+
+    def fill_row(self, r: int, value: int):
+        """
+        Fill row r with value.
+        """
+        self.set_row(r, [value for _ in range(self.get_width())])

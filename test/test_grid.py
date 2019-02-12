@@ -8,6 +8,18 @@ class TestGrid(unittest.TestCase):
         zeros = [[0 for _ in range(3)] for __ in range(2)]
         g = Grid.from_data(zeros)
         self.assertEqual(g._grid, zeros)
+        zeros[0][0] = 1
+        self.assertNotEqual(g._grid, zeros)
+
+    def test_equals(self):
+        ones = Grid(2, 3, 1)
+        zeros = Grid(2, 3)
+        zeros2 = Grid(2, 3)
+        zero_diff = Grid(3, 2)
+        self.assertTrue(ones == ones)
+        self.assertTrue(zeros == zeros2)
+        self.assertFalse(zeros == ones)
+        self.assertFalse(zeros == zero_diff)
 
     def test_point_within(self):
         g = Grid(2, 3)
@@ -61,6 +73,7 @@ class TestGrid(unittest.TestCase):
         # Otherwise, every other position is non-zero, so will always conflict:
         self.assertTrue(t0.has_conflict(s0))
         self.assertTrue(t0.has_conflict(s2))
+        self.assertTrue(t0.has_conflict(s1, 2, 2))
 
         self.assertTrue(t1.has_conflict(s2)) # Too large to merge; conflict
         self.assertFalse(t1.has_conflict(s0))
@@ -78,6 +91,9 @@ class TestGrid(unittest.TestCase):
         parent0.merge(Grid(2, 2, -1)) # 0, 0
         self.assertEqual(parent0._grid, [[-1, -1], [-1, -1]])
         parent0.merge(Grid(1, 1, 2), 1, 0) # 1, 0
+        parent1 = Grid(4, 4)
+        parent1.merge(Grid(1, 1, 1), 3, 3)
+        self.assertEqual(parent1.get_at(3, 3), 1)
         with self.assertRaises(ValueError):
             parentE0 = Grid(2, 1)
             parentE0.merge(Grid(3, 3))
@@ -175,3 +191,8 @@ class TestGrid(unittest.TestCase):
         negative.shift_rows(3, 5, -3)
         self.assertEqual(negative.get_rows(0, 2), [[1], [2], [3]])
         self.assertTrue(_rows_are_zero(negative, 3, 5))
+
+    def test_fill_row(self):
+        g = Grid(2, 3)
+        g.fill_row(0, 1)
+        self.assertTrue(g.get_row(0) == [1, 1, 1])
