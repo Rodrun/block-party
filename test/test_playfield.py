@@ -34,8 +34,7 @@ class TestPlayField(unittest.TestCase):
         self.assertEqual(10 // 2, field._active.x)
         self.assertEqual(0, field._active.y)
 
-    def test_step(self):
-        # both _try_step and step
+    def test_try_step(self):
         field = self.get_empty()
         LEFT = Step.horizontal(True)
         RIGHT = Step.horizontal(False)
@@ -43,17 +42,30 @@ class TestPlayField(unittest.TestCase):
         self.assertIsNotNone(field._try_step(DOWN))
         self.assertIsNotNone(field._try_step(LEFT))
         self.assertIsNotNone(field._try_step(RIGHT))
-        self.assertTrue(field.step(DOWN))
-        self.assertTrue(field.step(RIGHT))
-        self.assertTrue(field.step(DOWN))
         tleft = self.get_empty((0, 0))
         self.assertIsNone(tleft._try_step(LEFT))
         self.assertIsNotNone(tleft._try_step(RIGHT))
         filled = self.get_empty()
         filled._field.fill_row(2, 1) # 3rd row from top is filled
         self.assertIsNone(filled._try_step(DOWN))
-        self.assertFalse(filled.step(DOWN))
+
+    def test_step(self):
+        field = self.get_empty()
+        DOWN = Step.vertical()
+        LEFT = Step.horizontal(True)
+        RIGHT = Step.horizontal(False)
+        self.assertFalse(field.step(DOWN))
+        self.assertFalse(field.step(LEFT))
+        self.assertFalse(field.step(RIGHT))
+        field._field.fill_row(3, 1) # Row right below the active
+        self.assertTrue(field.step(DOWN))
 
     def test_get_view(self):
         empty = self.get_empty()
         self.assertNotEqual(empty.get_view(), empty._field)
+
+    def test_apply_multiplier(self):
+        field = self.get_empty()
+        arr = [[0, 1, 0], [1, 0, 1]]
+        self.assertListEqual(field._apply_multiplier(arr, 2),
+            [[0, 2, 0], [2, 0, 2]])

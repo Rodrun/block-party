@@ -222,3 +222,10 @@ class Grid:
         Fill row r with value.
         """
         self.set_row(r, [value for _ in range(self.get_width())])
+
+    def get_filled_rows(self, y0: int, y1: int) -> list:
+        filled = []
+        for j in range(y1 - y0):
+            if self.row_is_filled(y0 + j):
+                filled.append(j)
+        return filled

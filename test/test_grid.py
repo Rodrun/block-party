@@ -196,3 +196,12 @@ class TestGrid(unittest.TestCase):
         g = Grid(2, 3)
         g.fill_row(0, 1)
         self.assertTrue(g.get_row(0) == [1, 1, 1])
+
+    def test_get_filled_rows(self):
+        g = Grid(4, 2)
+        filled_rows = [0, 2, 3]
+        for fr in filled_rows:
+            g.fill_row(fr, 1)
+        self.assertListEqual(g.get_filled_rows(0, 4), filled_rows)
+        g = Grid(1, 1)
+        self.assertListEqual(g.get_filled_rows(0, 1), [])

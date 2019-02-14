@@ -41,13 +41,16 @@ class ActiveBlock:
     """
 
     def __init__(self, x: int, y: int, data: list):
-        self.x = x
-        self.y = y
-        self._grid = Grid.from_data(data)
+        self.reset(x, y, data)
 
     @classmethod
     def copy(cls, other: ActiveBlock):
         return cls(other.x, other.y, other._grid._grid)
+
+    def reset(self, x: int, y: int, data: list):
+        self.x = x
+        self.y = y
+        self._grid = Grid.from_data(data)
 
     def get_position(self) -> tuple:
         return self.x, self.y
@@ -87,13 +90,17 @@ class PlayField:
         self._field = Grid.create_default()
         self._level = initial_level
         self._level_speeds = level_speeds
+        self._filled_rows = []
         if spawn_position is not None:
             self._spawn_position = spawn_position
         else:
             self._spawn_position = self.get_width() // 2, 0
         # Active block
+        #self._active = ActiveBlock(*self._spawn_position,
+        #    block_data[initial_block])
         self._active = ActiveBlock(*self._spawn_position,
-            block_data[initial_block])
+            [[0]])
+        self.spawn(initial_block)
 
     def get_level(self) -> int:
         return self._level
@@ -112,14 +119,26 @@ class PlayField:
         """
         return self._level_speeds[level] * dt
 
-    def spawn(self, i: int = -1):
-        """
-        Spawn next block. Chooses random if i < 0.
-        """
-        block = self._get_random_block() if i < 0 else list(self._blocks)[i]
-        self._active = ActiveBlock(*self._spawn_position, block)
+    def _apply_multiplier(self, target: list, x: int) -> list:
+        result = []
+        for j in range(len(target)):
+            result_row = []
+            for i in range(len(target[j])):
+                value = target[j][i]
+                result_row.append(value * x)
+            result.append(result_row)
+        return result
 
-    def _get_random_block(self):
+    def spawn(self, i: str = "", multiplier: int = 1):
+        """
+        Spawn next block. Chooses random if i is empty string.
+        Multiplies new active block grid values by multiplier.
+        """
+        block = self.get_random_block() if i == "" else self._blocks[i]
+        self._active.reset(*self._spawn_position,
+            self._apply_multiplier(block, multiplier))
+
+    def get_random_block(self):
         result = choice(list(self._blocks.keys()))
         return self._blocks[result]
 
@@ -149,25 +168,33 @@ class PlayField:
 
     def step(self, step: Step) -> bool:
         """
-        Attempt a given Step. Returns True if successful and updates
-        the active block. False if cannot perform movement, and if
-        step type is "vertical", will automatically merge to playfield
-        and spawn new block.
+        Attempt a given Step. Returns True if block was placed,
+        otherwise False.
         """
         result = self._try_step(step)
         if result is not None:
             self._active = result
-            return True
-        else:
+        else: # Returned None; invalid step
             # Vertical conflict means time to place in field
             if step.get_type() == "vertical":
+                active_pos = self._active.get_position()
                 self._field.merge(self._active.get_grid(),
-                    *self._active.get_position())
-                self.spawn()
+                    *active_pos)
+                self._filled_rows = self._field.get_filled_rows(0,
+                    self.get_height())
+                return True
         return False
 
-    def get_width(self):
+    def get_filled_rows(self) -> list:
+        return self._filled_rows
+
+    def clear_filled_rows(self):
+        for y in self.get_filled_rows():
+            self._field.shift_rows(0, y - 1, 1)
+        self._filled_rows = []
+
+    def get_width(self) -> int:
         return self._field.get_width()
 
-    def get_height(self):
+    def get_height(self) -> int:
         return self._field.get_height()
