@@ -1,0 +1,11 @@
+{
+    "binds": {
+        "rotate_cw": 120,
+        "rotate_ccw": 122,
+        "hard_drop": 32,
+        "soft_drop": 274,
+        "hold": 99,
+        "left": 276,
+        "right": 275
+    }
+}

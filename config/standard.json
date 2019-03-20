@@ -1,0 +1,48 @@
+{
+    "board": {
+        "layout": {
+            "points": {
+                "position": [0.3, 0.0, 0.33, 0.15],
+                "title": "SCORE"
+            },
+            "playfield": {
+                "position": [0.3, 0.15, 0.33, 0.85],
+                "title": ""
+            },
+            "lines": {
+                "position": [0.0, 0.0, 0.2, 0.2],
+                "title": "LINE"
+            },
+            "next": {
+                "position": [0.0, 0.4, 0.2, 0.2],
+                "title": "NEXT"
+            },
+            "name": {
+                "position": [0.0, 0.6, 0.3, 0.15],
+                "title": "PLAYER"
+            },
+            "statistic": {
+                "position": [0.0, 0.8, 0.2, 0.15],
+                "title": "STAT",
+                "interval": 4000
+            },
+            "level": {
+                "position": [0.0, 0.3, 0.1, 0.1],
+                "title": "LV"
+            }
+        },
+        "boardBackground": "res/image/display.png",
+        "playfield": {
+            "effects": true,
+            "backgroundColor": [255, 255, 255],
+            "backgroundImage": null
+        },
+        "background": {
+            "color": [0, 0, 0, 0],
+            "image": ""
+        }
+    },
+    "blocks": {
+        "path": "config/blocks.json"
+    }
+}

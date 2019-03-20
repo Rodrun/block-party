@@ -1,1 +1,1 @@
-import game.main.py
+import game.main

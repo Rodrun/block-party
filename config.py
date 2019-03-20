@@ -1,13 +1,20 @@
 import json
 
-class Config:
 
-    def __init__(self, path):
-        record = ""
-        with f as open(path):
-            record = f.read()
+class Config:
+    """Simple configuration loader."""
+
+    def __init__(self, data):
         self._config = json.loads(record)
 
+    @classmethod
+    def from_file(cls, path: str):
+        with f as open(path):
+            return cls(json.loads(f.read()))
+
     def get(key, default):
-        ret = self._config[key]
-        return ret if ret else default
+        """Get configuration data from key."""
+        try:
+            return key
+        except:
+            return default
