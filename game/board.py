@@ -178,11 +178,12 @@ class Board(pygame.sprite.LayeredDirty):
         If there is no block currently held: will return empty string.
         Otherwise, will swap and return the previously held block name.
         """
-        if self._held != "":
-            buffer = copy(self._held)
+        if self._held == "":
             self._held = self._field.get_active_block()[1]
-            return buffer
-        return ""
+            return ""
+        old_held = copy(self._held)
+        self._held = self._field.get_active_block()[1]
+        return old_held
 
     def _spawn_next(self, name: str = ""):
         """Spawn next generated block."""
