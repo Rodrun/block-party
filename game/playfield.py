@@ -76,6 +76,9 @@ class ActiveBlock:
         """Get the grid of the block."""
         return self._grid
 
+    def __str__(self) -> str:
+        return str(self._grid)
+
 
 class PlayField:
     """Handles the active block and its collisions."""
@@ -111,6 +114,7 @@ class PlayField:
         # Active block
         self._active = ActiveBlock(*self._spawn_position,
             [[0]])
+        self._active_name = ""  # Name of active block
         self.spawn(initial_block)
 
     def get_level(self) -> int:
@@ -126,6 +130,10 @@ class PlayField:
         else:
             self._level = l
 
+    def get_active_block(self) -> tuple:
+        """Get the current active block and name."""
+        return self._active, self._active_name
+
     def get_spawn_position(self) -> tuple:
         """Get the coordinates of the spawn position."""
         return self._spawn_position
@@ -140,6 +148,8 @@ class PlayField:
 
     def _apply_multiplier(self, target: list, x: int) -> list:
         """Multiply all target values by x."""
+        if x == 1:
+            return target
         result = []
         for j in range(len(target)):
             result_row = []
@@ -154,9 +164,16 @@ class PlayField:
         Chooses random if i is empty string.
         Multiplies new active block grid values by multiplier.
         """
-        block = self.get_random_block() if i == "" else self._blocks[i]
-        self._active.reset(*self._spawn_position,
-            self._apply_multiplier(block, multiplier))
+        try:
+            if i == "":
+                block, nm = self.get_random_block()
+            else:
+                block, nm = self._blocks[i], i
+            self._active.reset(*self._spawn_position,
+                self._apply_multiplier(block, multiplier))
+            self._active_name = nm
+        except(KeyError):
+            print("Warning: tried to spawn invalid block '{}'".format(i))
 
     def get_block_data(self, name: str) -> list:
         """Get block grid data."""
@@ -167,8 +184,11 @@ class PlayField:
         return choice(list(self._blocks.keys()))
 
     def get_random_block(self):
-        """Get random block grid data."""
-        return self.get_block_data(self.get_random_blockname())
+        """Get random block grid data.
+        Returns grid of selected block and string name of it.
+        """
+        name = self.get_random_blockname()
+        return self.get_block_data(name), name
 
     def get_view(self) -> Grid:
         """Get the merged grid of the field and active block."""

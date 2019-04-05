@@ -68,7 +68,7 @@ class HUDDisplay(pygame.sprite.DirtySprite):
         background: pygame.Surface, content: pygame.Surface = None,
         title: str = "", font: pygame.font.Font = None,
         padding_x: float = .005, padding_y: float = .005,
-        title_height: float = .3, color: tuple = (255, 255, 255)):
+        title_height: float = .25, color: tuple = (255, 255, 255)):
         """
         x - X coordinate.
         y - Y coordinate.
@@ -93,7 +93,7 @@ class HUDDisplay(pygame.sprite.DirtySprite):
         self.font = font
         self.title_height = title_height
         self.color = color # Text color
-        self.content = None  # Surface to display
+        self.content = content  # Surface to display
         self.remaining_h = 0 # Remaining height left for content
         self.remaining_w = 0 # Remaining width left for content
         self.content_rect = pygame.Rect(0, 0, 0, 0)
@@ -103,27 +103,36 @@ class HUDDisplay(pygame.sprite.DirtySprite):
     def redraw(self): # TODO: optimize
         """Redraw all assets in the HUD."""
         self.clear_everything()
-        total_remaining_h = self.rect.height - self.padding_height() * 2
-        total_remaining_w = self.rect.width - self.padding_width() * 2
+        #total_remaining_h = self.rect.height - self.padding_height() * 2
+        #total_remaining_w = self.rect.width - self.padding_width() * 2
+        # Available space for any assets (within margins)
+        available = pygame.Rect(self.padding_width(), self.padding_height(),
+            self.rect.width - self.padding_width(),
+            self.rect.height - self.padding_height())
 
-        if self.font is not None or self.text is not "":
+        title = None
+        if self.font is not None and self.title is not "":
             title = Text(self.title, self.font, color=self.color)
-            # Available space for any assets (within margins)
-            available = pygame.Rect(self.padding_width(), self.padding_height(),
-                self.rect.width - self.padding_width(),
-                self.rect.height - self.padding_height())
             # Fit into header
             if self.content:  # Adjust to reserve space for content
                 header = pygame.Rect(available.x, available.y,
                     available.width, available.height * self.title_height)
                 title.rect = util.fit(title.rect, header)
+                title.rect.x = self.padding_width()
+                title.rect.y = self.padding_height()
             self.image.blit(title.image, title.rect)
 
         self.content_rect.x = self.padding_width()
-        self.content_rect.y = title.rect.y + title.rect.height
+        self.content_rect.y = self.padding_height()
+        if title is not None:
+            self.content_rect.y = title.rect.height
         self.content_rect.width = available.width
         self.content_rect.height = available.height
-        #self.redraw_content()
+        # Reize content to fit
+        if self.content:
+            resize = util.resize(self.content,
+                util.dimensions(self.content_rect))
+            self.image.blit(resize, self.content_rect)
         self.dirty = 1
 
     def redraw_content(self):

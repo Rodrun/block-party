@@ -4,9 +4,7 @@ import json
 from random import randint
 
 from pygame.locals import *
-from game.playfield import PlayField, Step
 from game.board import Board
-from game.grid import BasicGridRenderer
 from game.util import get_points, dimensions
 
 
@@ -27,11 +25,10 @@ blocks = json.load(open("config/blocks.json", "r"))
 block_data = blocks["blocks"]
 block_cols = blocks["colors"]
 level_speeds = json.load(open("config/frames.json", "r"))
-playfield = PlayField(block_data, "", level_speeds=level_speeds)
 font = pygame.font.Font("res/font/akashi.ttf",
     screen.get_height() // 15)
 board = Board(screen_rect.width, screen_rect.height, config["board"],
-    block_data, block_cols, level_speeds, font, None, None)
+    block_data, block_cols, level_speeds, font, "player1", None, None)
 
 fps = 60
 while running:
@@ -45,7 +42,7 @@ while running:
                 running = False
             else:
                 for name, keycode in binds.items():
-                    if event.keycode == keycode:
+                    if event.key == keycode:
                         board.performInput(name)
     board.update(1 / fps)
     board.draw(screen)

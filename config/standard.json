@@ -31,7 +31,7 @@
                 "title": "LV"
             }
         },
-        "boardBackground": "res/image/display.png",
+        "boardBackground": null,
         "playfield": {
             "effects": true,
             "backgroundColor": [255, 255, 255],

@@ -6,6 +6,13 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
+pdb = "*"
+python-pdb = "*"
+pyinstaller = "*"
+python-pyinstaller = "*"
+py-pyinstaller = "*"
+pyinstaller-python = "*"
+pyinstaller-py = "*"
 
 [requires]
 python_version = "3.7"
