@@ -170,29 +170,19 @@ class Board(pygame.sprite.LayeredDirty):
                 break
         elif inp == GameInput.hold():
             if self._hold_ready:
-                self._dbg_active_hold()
                 self._spawn_next(self._hold())
                 self._hold_ready = False
-                self._dbg_active_hold()
-
-    def _dbg_active_hold(self) -> None:
-        """Debug print active and held block."""
-        print("Active block: {} | Held block: {}".format(
-            self._field.get_active_block()[1],
-            self._held
-        ))
 
     def _hold(self) -> str:
         """Swap the hold block name with the current block.
         If there is no block currently held: will return empty string.
         Otherwise, will swap and return the previously held block name.
         """
-        if self._held == "":
+        if self._held != "":
+            buffer = copy(self._held)
             self._held = self._field.get_active_block()[1]
-            return ""
-        old_held = copy(self._held)
-        self._held = self._field.get_active_block()[1]
-        return old_held
+            return buffer
+        return ""
 
     def _spawn_next(self, name: str = ""):
         """Spawn next generated block."""
