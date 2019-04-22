@@ -186,15 +186,13 @@ class PlayField:
 
     def get_view(self, ghost: bool = True) -> Grid:
         """Get the merged grid of the field and active block."""
-        # Active block
         mock = Grid.from_grid(self._field)
-        x, y = self._active.get_position()
-        mock.merge(self._active.get_grid(), x, y)
-
         # Ghost block
         if ghost:
             g_block = self.get_ghost_block()
             mock.merge(g_block.get_grid(), *g_block.get_position())
+        # Active block
+        mock.merge(self._active.get_grid(), *self._active.get_position())
         return mock
 
     def try_step_with(self, ab: ActiveBlock, step: Step) -> ActiveBlock:
@@ -229,10 +227,20 @@ class PlayField:
                 active_pos = self._active.get_position()
                 self._field.merge(self._active.get_grid(),
                     *active_pos)
-                self._filled_rows = self._field.get_filled_rows(0,
-                    self.get_height())
+                active_row = active_pos[1]
+                remaining = self._get_remaining_rows(active_row)
+                self._filled_rows = self._field.get_filled_rows(active_row,
+                    active_row + remaining)
                 return True
         return False
+
+    def _get_remaining_rows(self, row: int):
+        """Get remaining rows left from bottom, in respect to given row."""
+        bottom = self.get_height()
+        diff = bottom - row
+        if diff <= 0:
+            return 0
+        return diff
 
     def get_filled_rows(self) -> list:
         """Get list of non-zero filled rows."""

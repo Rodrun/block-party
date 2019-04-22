@@ -62,3 +62,11 @@ def apply_multiplier(target: list, x: int) -> list:
             result_row.append(value * x)
         result.append(result_row)
     return result
+
+
+def within(low, x, high):
+    """Test if x is within low and high bounds (low <= x <= high).
+    ValueError is raised if low > high"""
+    if low > high:
+        raise ValueError("low ({}) > high ({})".format(low, high))
+    return low <= x and x <= high

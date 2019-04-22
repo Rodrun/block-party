@@ -230,10 +230,23 @@ class Grid:
         self.set_row(r, [value for _ in range(self.get_width())])
 
     def get_filled_rows(self, y0: int, y1: int) -> list:
+        """Get a list of row indexes that are filled within [y0, y1) range.
+        ValueError will be raised if y0 > y1, or 0 <= (y0 or y1) <= rows
+        is not satisifed.
+        """
+        if not util.within(0, y0, self.get_height()) or \
+            not util.within(0, y1, self.get_height()):
+            raise ValueError("y0 ({}) or y1 ({}) not within [0, {}] bounds"
+                .format(y0, y1, self.get_height()))
+        if y0 > y1:
+            raise ValueError("y0 ({}) must be <= y1 ({})".format(y0, y1))
+        if y0 == y1:
+            return []
+
         filled = []
         for j in range(y1 - y0):
             if self.row_is_filled(y0 + j):
-                filled.append(j)
+                filled.append(y0 + j)
         return filled
 
     def apply_multiplier(self, m: int):
