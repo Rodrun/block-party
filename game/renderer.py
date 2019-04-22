@@ -4,6 +4,16 @@ from pygame.locals import *
 from game.grid import Grid
 from game.playfield import ActiveBlock
 
+
+def get_cell_dim(grid: Grid, dest: pygame.Surface) -> tuple:
+    """Get proportionate cell dimensions."""
+    w = grid.get_width()
+    h = grid.get_height()
+    cell_w = dest.get_width() / w
+    cell_h = dest.get_height() / h
+    return cell_w, cell_h
+
+
 class GridRenderer:
     """Base class for Grid rendering.
     
@@ -34,27 +44,37 @@ class BasicGridRenderer(GridRenderer):
     1 will represent the first element in colors, which is [255, 0, 0].
     """
 
-    def __init__(self, colors: tuple):
+    def __init__(self, colors: tuple, alpha: int = 50,
+        cell_dim: tuple = None):
         """
         colors - Color of blocks.
+        alpha - Alpha transperancy value for ghost blocks.
+        cell_dim - Cell exact dimensions, None for default.
         """
         super().__init__(colors)
+        self.alpha = alpha
+        self.cell_dim = cell_dim
 
     def render(self, grid: Grid, dest: pygame.Surface):
         w = grid.get_width()
         h = grid.get_height()
-        cell_w = dest.get_width() / w
-        cell_h = dest.get_height() / h
+        if not self.cell_dim:
+            self.cell_dim = get_cell_dim(grid, dest)
+        cell_w, cell_h = self.cell_dim
+
         for y in range(h):
             for x in range(w):
                 piece = grid.get_at(x, y)
-                surf = pygame.Surface((cell_w, cell_h))
-                if piece <= len(self.colors) and piece > 0:
+                surf = pygame.Surface((cell_w, cell_h), pygame.SRCALPHA)
+                if piece <= len(self.colors) and piece != 0:
                     # 0 means no color, 1 is the equivalent of colors[0]
-                    surf.fill((255, 255, 255))
-                    margin = int(.05 * cell_w)
-                    surf.fill(self.colors[piece], pygame.Rect([margin] * 2,
-                        (cell_w - margin, cell_h - margin)))
+                    # -1 is the equivalent to 1, but with alpha value
+                    color = self.colors[abs(piece)][:]
+                    if len(color) < 4 and piece < 0:
+                        color.append(self.alpha)
+                    surf.fill(color,
+                        pygame.Rect(0, 0,
+                            cell_w, cell_h))
                 dest.blit(surf, (x * cell_w, y * cell_h))
 
     def update(self, g: Grid, dt: float):
@@ -83,22 +103,6 @@ class ShinyGridRenderer(GridRenderer):
         """
         Update shine animation.
         """
-        pass
-
-
-class GhostRenderer(GridRenderer):
-    """Renders 'ghost' block."""
-
-    def __init__(self, colors: tuple, ab: ActiveBlock, opacity: float = .5):
-        """
-        """
-        super().__init__(colors)
-        self.opacity = opacity
-
-    def render(self, g: Grid, dest: pygame.Surface):
-        pass
-
-    def update(self, g: Grid, dt: float):
         pass
 
 

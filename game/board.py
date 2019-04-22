@@ -7,7 +7,7 @@ from pygame.locals import *
 from game.playfield import PlayField, Step
 from game.component import Text, HUDDisplay
 from game.generator import Generator
-from game.renderer import Renderers, BasicGridRenderer
+from game.renderer import Renderers, BasicGridRenderer, get_cell_dim
 from game import util
 
 
@@ -120,24 +120,29 @@ class Board(pygame.sprite.LayeredDirty):
         self._renderer.render(self._field.get_view(), dest)
         self.update_board("playfield", dest)
 
+        cell_dim = get_cell_dim(self._field.get_view(),
+            self._displays["playfield"].content)
+        self._renderer.renderers[0].cell_dim = cell_dim
+
         # Playfield
+        placed = False
         if self._fall_time <= self._field.get_current_level_speed(dt):
             self._fall_time += dt
         else:
             self._fall_time = 0
             placed = self._field.step(Step.vertical())
-            # Line clear check/place check
-            if placed:
-                self._prev_pos = self._field.get_active_block()[0].get_position()
-                filled = self._field.get_filled_rows()
-                if len(filled) > 0:
-                    self._field.clear_filled_rows()
-                self._spawn_next()
-                self._hold_ready = True
+
+        # Line clear check/place check
+        if placed:
+            self._prev_pos = self._field.get_active_block()[0].get_position()
+            filled = self._field.get_filled_rows()
+            if len(filled) > 0:
+                self._field.clear_filled_rows()
+            self._spawn_next()
+            self._hold_ready = True
 
     def has_lost(self) -> bool:
-        """Check if current step has caused game over.
-        """
+        """Check if current step has caused game over."""
         return self._prev_pos == self._field.get_spawn_position()
 
     def set_score(self, score: int):
@@ -150,6 +155,11 @@ class Board(pygame.sprite.LayeredDirty):
         """Set player name."""
         self._name = name
         self.update_board("name", Text(name, self._font).image)
+
+    def set_lines(self, count: int):
+        """Set the lines cleared."""
+        self._lines = lines
+        self.update_board("lines", Text(name, self._font).image)
 
     def performInput(self, inp: str):
         """Perform a game input command."""
@@ -180,10 +190,19 @@ class Board(pygame.sprite.LayeredDirty):
         """
         if self._held == "":
             self._held = self._field.get_active_block()[1]
+            self.redraw_hold()
             return ""
         old_held = copy(self._held)
         self._held = self._field.get_active_block()[1]
+        self.redraw_hold()
         return old_held
+
+    def redraw_hold(self):
+        """Redraw the hold block board."""
+        dest = pygame.Surface((250, 250))
+        self._renderer.render(self._field.get_block(self._held).get_grid(),
+            dest)
+        self.update_board("hold", dest)
 
     def _spawn_next(self, name: str = ""):
         """Spawn next generated block."""
@@ -197,27 +216,28 @@ class Board(pygame.sprite.LayeredDirty):
             self._bdisplay = pygame.image.load(config["boardBackground"])
         except:
             print("Note: _bdisplay is None (no display board bg)")
+
         layout = config["layout"]
         for name, data in layout.items():
             # Required parameters:
             position = data["position"] # Raw position values
             title = str(data["title"])
+            # Optional parameters
+            proportion = True
+            if "proportion" in data:
+                proportion = data["proportion"]
             # Calculated position and dimensions
             point = (position[0] * self._width, position[1] * self._height)
             dimensions = (position[2] * self._width, position[3] * self._height)
 
-            # Interval is non-zero if it is for the statistic display
-            interval = 0
-            if "interval" in data:
-                interval = data["interval"]
-
-            testSurf = pygame.Surface((10, 10))
-            testSurf.fill((255, 0, 255))
+            testSurf = pygame.Surface((1, 1), pygame.SRCALPHA)
+            testSurf.convert_alpha()
             self._displays[name] = HUDDisplay(point[0], point[1],
                 dimensions[0], dimensions[1],
                 self._bdisplay, testSurf,
                 title,
-                self._font)
+                self._font,
+                proportion=proportion)
             self.add(self._displays[name])
 
     def update_board(self, name: str, content: pygame.Surface):

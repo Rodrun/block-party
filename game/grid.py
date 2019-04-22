@@ -3,6 +3,8 @@ from __future__ import annotations
 import pygame
 from pygame.locals import *
 
+from game import util
+
 
 class Grid:
 
@@ -233,3 +235,7 @@ class Grid:
             if self.row_is_filled(y0 + j):
                 filled.append(j)
         return filled
+
+    def apply_multiplier(self, m: int):
+        """Multiply all cell values by m."""
+        self._grid = util.apply_multiplier(self._grid, m)

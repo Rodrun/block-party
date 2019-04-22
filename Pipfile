@@ -6,13 +6,10 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-pdb = "*"
-python-pdb = "*"
+pygame = "*"
 pyinstaller = "*"
-python-pyinstaller = "*"
-py-pyinstaller = "*"
-pyinstaller-python = "*"
-pyinstaller-py = "*"
+python-socketio = "*"
+httpserver = "*"
 
 [requires]
 python_version = "3.7"

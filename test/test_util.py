@@ -71,3 +71,8 @@ class TestUtil(unittest.TestCase):
         self.assertEqual("03", util.format_int(3, 2))
         self.assertEqual("45", util.format_int(45, 2))
         self.assertEqual("1000", util.format_int(1000, 3))
+
+    def test_apply_multiplier(self):
+        arr = [[0, 1, 0], [1, 0, 1]]
+        self.assertListEqual(util.apply_multiplier(arr, 2),
+            [[0, 2, 0], [2, 0, 2]])

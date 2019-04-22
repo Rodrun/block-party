@@ -7,5 +7,6 @@
         "hold": 99,
         "left": 276,
         "right": 275
-    }
+    },
+    "music": "res/music/Tetris_D_Theme.ogg"
 }

@@ -48,3 +48,17 @@ def fit(srcRect: pygame.Rect, destRect: pygame.Rect,
 def format_int(n: int, zeros: int = 7) -> str:
     """Format integer as zero-filled string."""
     return str(n).zfill(zeros)
+
+
+def apply_multiplier(target: list, x: int) -> list:
+    """Multiply all target values by x in a 2D list."""
+    if x == 1 or len(target) < 1:
+        return target
+    result = []
+    for j in range(len(target)):
+        result_row = []
+        for i in range(len(target[j])):
+            value = target[j][i]
+            result_row.append(value * x)
+        result.append(result_row)
+    return result

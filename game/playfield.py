@@ -4,6 +4,7 @@ import pygame
 from pygame.locals import *
 
 from game.grid import Grid
+from game import util
 
 
 class Step:
@@ -41,21 +42,23 @@ class Step:
 
 
 class ActiveBlock:
-    """Basic active block data."""
+    """Basic active block data.
+    An active block is one that isn't placed on the field (yet)."""
 
-    def __init__(self, x: int, y: int, data: list):
-        self.reset(x, y, data)
+    def __init__(self, x: int, y: int, data: list, ghost: bool = False):
+        self.reset(x, y, data, ghost)
 
     @classmethod
-    def copy(cls, other: ActiveBlock):
+    def copy(cls, other: ActiveBlock, ghost: bool = False):
         """Copy another ActiveBlock."""
-        return cls(other.x, other.y, other._grid._grid)
+        return cls(other.x, other.y, other._grid._grid[:], ghost)
 
-    def reset(self, x: int, y: int, data: list):
+    def reset(self, x: int, y: int, data: list, ghost: bool = False):
         """Reset position and grid data."""
         self.x = x
         self.y = y
-        self._grid = Grid.from_data(data)
+        real_data = data[:] if not ghost else util.apply_multiplier(data, -1)
+        self._grid = Grid.from_data(real_data)
 
     def get_position(self) -> tuple:
         """Get the current position on the field."""
@@ -146,19 +149,6 @@ class PlayField:
         """Current level speed in frames."""
         return self.get_level_speed(self.get_level(), dt)
 
-    def _apply_multiplier(self, target: list, x: int) -> list:
-        """Multiply all target values by x."""
-        if x == 1:
-            return target
-        result = []
-        for j in range(len(target)):
-            result_row = []
-            for i in range(len(target[j])):
-                value = target[j][i]
-                result_row.append(value * x)
-            result.append(result_row)
-        return result
-
     def spawn(self, i: str = "", multiplier: int = 1):
         """Spawn next block.
         Chooses random if i is empty string.
@@ -170,7 +160,7 @@ class PlayField:
             else:
                 block, nm = self._blocks[i], i
             self._active.reset(*self._spawn_position,
-                self._apply_multiplier(block, multiplier))
+                util.apply_multiplier(block, multiplier))
             self._active_name = nm
         except(KeyError):
             print("Warning: tried to spawn invalid block '{}'".format(i))
@@ -178,6 +168,10 @@ class PlayField:
     def get_block_data(self, name: str) -> list:
         """Get block grid data."""
         return self._blocks[name]
+
+    def get_block(self, name: str) -> ActiveBlock:
+        """Get block as an ActiveBlock object."""
+        return ActiveBlock(0, 0, self.get_block_data(name))
 
     def get_random_blockname(self) -> str:
         """Get random name of available blocks."""
@@ -190,33 +184,43 @@ class PlayField:
         name = self.get_random_blockname()
         return self.get_block_data(name), name
 
-    def get_view(self) -> Grid:
+    def get_view(self, ghost: bool = True) -> Grid:
         """Get the merged grid of the field and active block."""
+        # Active block
         mock = Grid.from_grid(self._field)
         x, y = self._active.get_position()
         mock.merge(self._active.get_grid(), x, y)
+
+        # Ghost block
+        if ghost:
+            g_block = self.get_ghost_block()
+            mock.merge(g_block.get_grid(), *g_block.get_position())
         return mock
 
-    def _try_step(self, step: Step) -> ActiveBlock:
-        """Attempt a given Step.
-        Return a new ActiveBlock if no conflicts
-        occur from the step; otherwise None is returned.
+    def try_step_with(self, ab: ActiveBlock, step: Step) -> ActiveBlock:
+        """Attempt a given step with a given active block.
+        Return a new ActiveBlock if no conflicts; None otherwise.
         """
         if step is not None:
-            active_copy = ActiveBlock.copy(self._active)
+            active_copy = ActiveBlock.copy(ab)
             active_copy.perform_step(step)
             if not self._field.has_conflict(active_copy.get_grid(),
                 active_copy.x, active_copy.y):
                 return active_copy
-        else:
-            raise ValueError("Cannot try step if None")
         return None
+
+    def try_step(self, step: Step) -> ActiveBlock:
+        """Attempt a given Step with current active block.
+        Return a new ActiveBlock if no conflicts
+        occur from the step; otherwise None is returned.
+        """
+        return self.try_step_with(self._active, step)
 
     def step(self, step: Step) -> bool:
         """Request to perform a Step.
         Returns True if block was placed.
         """
-        result = self._try_step(step)
+        result = self.try_step(step)
         if result is not None:
             self._active = result
         else: # Returned None; invalid step
@@ -247,3 +251,16 @@ class PlayField:
     def get_height(self) -> int:
         """Get grid height."""
         return self._field.get_height()
+
+    def get_ghost_block(self) -> ActiveBlock:
+        """Get the 'ghost' block from the active block.
+        Ghost blocks should have negative values.
+        """
+        ghost = ActiveBlock.copy(self._active, False)
+        for r in range(self.get_height()):
+            if self.try_step_with(ghost, Step.vertical()) is not None:
+                ghost.y += 1
+                continue
+            break
+        ghost._grid.apply_multiplier(-1)
+        return ghost
