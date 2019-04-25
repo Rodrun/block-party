@@ -120,6 +120,9 @@ class PlayField:
         self._active_name = ""  # Name of active block
         self.spawn(initial_block)
 
+    def get_grid(self) -> Grid:
+        return self._field
+
     def get_level(self) -> int:
         """Get current level."""
         return self._level

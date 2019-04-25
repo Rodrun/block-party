@@ -205,3 +205,17 @@ class TestGrid(unittest.TestCase):
         self.assertListEqual(g.get_filled_rows(0, 4), filled_rows)
         g = Grid(1, 1)
         self.assertListEqual(g.get_filled_rows(0, 1), [])
+        # ValueError raise test on 1x1 grid
+        with self.assertRaises(ValueError):
+            g.get_filled_rows(-1, 0)
+            g.get_filled_rows(0, -1)
+            g.get_filled_rows(1, 2)
+            g.get_filled_rows(0, 2)
+            g.get_filled_rows(1, 0)
+        # y0 not 0 test
+        g = Grid(10, 2)
+        for fr in [0, 8, 9]:
+            g.fill_row(fr, 1)
+        self.assertListEqual(g.get_filled_rows(1, 7), [])
+        self.assertListEqual(g.get_filled_rows(5, 9), [8])
+        self.assertListEqual(g.get_filled_rows(8, 10), [8, 9])

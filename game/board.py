@@ -7,8 +7,9 @@ from pygame.locals import *
 from game.playfield import PlayField, Step
 from game.component import Text, HUDDisplay
 from game.generator import Generator
-from game.renderer import Renderers, BasicGridRenderer, get_cell_dim
+from game.renderer import BasicGridRenderer, get_cell_dim
 from game import util
+from game.grid import Grid
 
 
 class GameInput:
@@ -98,6 +99,7 @@ class Board(pygame.sprite.LayeredDirty):
         self._name = name
         self._held = "" # Held block name
         self._hold_ready = True # Able to hold block at the moment?
+        self.placed = False # Active block placed?
 
         # Generator
         self._generator = Generator(list(block_data.keys()), 4)
@@ -108,38 +110,45 @@ class Board(pygame.sprite.LayeredDirty):
         self._setup(configuration)
 
         # Renderers
-        self._renderer = Renderers([BasicGridRenderer(block_cols)])
+        self._renderer = BasicGridRenderer(block_cols, self._field.get_grid())
+        self._hold_rend = BasicGridRenderer(block_cols, Grid(4, 4))
 
         self.set_score(self._score)
         self.set_name(self._name)
 
     def update(self, dt: float):
         # HUD
-        self._renderer.update(self._field.get_view(), dt)
+        self._renderer.grid = self._field.get_view()
+        self._renderer.update(dt)
         dest = pygame.Surface((self._width, self._height))  # Pay attention to dimensions...
-        self._renderer.render(self._field.get_view(), dest)
+        self._renderer.render(dest)
         self.update_board("playfield", dest)
 
         cell_dim = get_cell_dim(self._field.get_view(),
             self._displays["playfield"].content)
-        self._renderer.renderers[0].cell_dim = cell_dim
-
-        # Playfield
-        placed = False
-        if self._fall_time <= self._field.get_current_level_speed(dt):
-            self._fall_time += dt
-        else:
-            self._fall_time = 0
-            placed = self._field.step(Step.vertical())
 
         # Line clear check/place check
-        if placed:
+        if self.placed:
             self._prev_pos = self._field.get_active_block()[0].get_position()
             filled = self._field.get_filled_rows()
             if len(filled) > 0:
                 self._field.clear_filled_rows()
             self._spawn_next()
             self._hold_ready = True
+
+        self.placed = False
+
+        if self._fall_time <= self._field.get_current_level_speed(dt):
+            self._fall_time += dt
+        else:
+            self._fall_time = 0
+            self.placed = self._field.step(Step.vertical())
+
+    def _step(self, step: Step) -> bool:
+        """Perform a step.
+        Returns if placed.
+        """
+        pass # TODO
 
     def has_lost(self) -> bool:
         """Check if current step has caused game over."""
@@ -177,6 +186,7 @@ class Board(pygame.sprite.LayeredDirty):
             for r in range(self._field.get_height()):
                 if not self._field.step(Step.vertical()):
                     continue
+                self.placed = True
                 break
         elif inp == GameInput.hold():
             if self._hold_ready:
@@ -200,8 +210,8 @@ class Board(pygame.sprite.LayeredDirty):
     def redraw_hold(self):
         """Redraw the hold block board."""
         dest = pygame.Surface((250, 250))
-        self._renderer.render(self._field.get_block(self._held).get_grid(),
-            dest)
+        self._hold_rend.grid = self._field.get_block(self._held).get_grid()
+        self._hold_rend.render(dest)
         self.update_board("hold", dest)
 
     def _spawn_next(self, name: str = ""):

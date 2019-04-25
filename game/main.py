@@ -8,12 +8,15 @@ from game.board import Board
 from game.util import get_points, dimensions, resize
 
 
+REPEAT = 60
+TAS_REPEAT = 15
+
 # System
 pygame.init()
 screen = pygame.display.set_mode([0, 0], pygame.NOFRAME)
 screen_rect = screen.get_rect()
 clock = pygame.time.Clock()
-pygame.key.set_repeat(160)
+pygame.key.set_repeat(60, REPEAT)
 running = True
 
 singleplayer = json.load(open("config/singleplayer.json"))

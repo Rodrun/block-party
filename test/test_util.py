@@ -76,3 +76,10 @@ class TestUtil(unittest.TestCase):
         arr = [[0, 1, 0], [1, 0, 1]]
         self.assertListEqual(util.apply_multiplier(arr, 2),
             [[0, 2, 0], [2, 0, 2]])
+
+    def test_within(self):
+        self.assertTrue(util.within(0, 5, 5.5))
+        self.assertTrue(util.within(-1, -0.5, 0))
+        self.assertFalse(util.within(0, 6, 5))
+        with self.assertRaises(ValueError):
+            util.within(1, 0, -1)
