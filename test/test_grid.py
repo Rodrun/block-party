@@ -43,46 +43,70 @@ class TestGrid(unittest.TestCase):
     def test_can_fit(self):
         parent = Grid(4, 5)
         sub0 = Grid(1, 1) # Yes
-        self.assertTrue(parent.can_fit(sub0))
-        sub1 = Grid(5, 4) # No
-        self.assertFalse(parent.can_fit(sub1))
+        self.assertTrue(parent.can_fit(sub0)[0])
+        sub1 = Grid(5, 4) # Yes, since its 0s it can be trimmed
+        self.assertTrue(parent.can_fit(sub1)[0])
         sub2 = Grid(1, 1) # Yes
-        self.assertTrue(parent.can_fit(sub2, 4, 3))
+        self.assertTrue(parent.can_fit(sub2, 4, 3)[0])
         sub3 = Grid(parent.get_height(), parent.get_width()) # Yes
-        self.assertTrue(parent.can_fit(sub3))
-        sub4 = Grid(4, 6) # No
-        self.assertFalse(parent.can_fit(sub4))
-        sub5 = Grid(5, 5) # No
-        self.assertFalse(parent.can_fit(sub5))
-        self.assertFalse(parent.can_fit(sub0, 6, 6))
+        self.assertTrue(parent.can_fit(sub3)[0])
+        sub4 = Grid.from_data([[1] * 10]) # No, not trimmable to fit
+        self.assertFalse(parent.can_fit(sub4)[0])
+        sub5 = Grid(5, 5)
+        sub5.fill_row(0, 1)
+        self.assertTrue(parent.can_fit(sub5)[0])
+        self.assertFalse(parent.can_fit(sub0, 6, 6)[0]) # Out of bounds
+        negative = Grid.from_data([[0, 1], [0, 1]])
+        nfits, gr, pos = parent.can_fit(negative, -1, 0)
+        self.assertTrue(nfits)
+        self.assertListEqual(gr._grid, [[1], [1]])
+        self.assertTupleEqual(pos, (0, 0))
+
+    def test_remove(self):
+        parent = Grid(4, 4)
+        parent.remove(True, 0)
+        self.assertEqual(parent.get_dimensions(), (4, 3))
+        parent.remove(True, parent.get_height() - 1)
+        self.assertEqual(parent.get_dimensions(), (4, 2))
+        parent.remove(False, 0)
+        self.assertEqual(parent.get_dimensions(), (3, 2))
+        parent.remove(False, 1)
+        self.assertEqual(parent.get_dimensions(), (2, 2))
+
+    def test_trim(self):
+        l = Grid.from_data([[0, 0, 0],
+                            [0, 1, 1],
+                            [0, 1, 0]])
+        x, y = l.trim()
+        self.assertListEqual(l._grid, [
+            [1, 1],
+            [1, 0]
+        ])
+        self.assertTupleEqual((x, y), (1, 1))
+        l.trim() # No more should be trimmed
+        self.assertEqual(l.get_dimensions(), (2, 2))
+        empty = Grid(3, 3)
+        x, y = empty.trim()
+        self.assertEqual(empty.get_dimensions(), (0, 0))
+        self.assertTupleEqual((x, y), (0, 0))
+        i = Grid.from_data([[1, 0], [1, 0]])
+        i.trim()
+        self.assertListEqual(i._grid, [
+            [1], [1]
+        ])
+        one = Grid.from_data([[0, 0], [0, 1]])
+        one.trim()
+        self.assertListEqual(one._grid, [[1]])
 
     def test_has_conflict(self):
-        t0 = Grid(3, 3, -1)
-        t0.set_at(2, 2, 0)
-        t1 = Grid(4, 3, 0)
-        t2 = Grid(2, 2, 1)
-
-        s0 = Grid(1, 1, 1)
-        s1 = Grid(2, 2, 2)
-        s1.set_at(0, 0, -1)
-        s2 = Grid(5, 5)
-        s3 = Grid(1, 1)
-        s4 = Grid(2, 2)
-
-        self.assertFalse(t0.has_conflict(s0, 2, 2)) # The only part of t0 w/ 0
-        # Otherwise, every other position is non-zero, so will always conflict:
-        self.assertTrue(t0.has_conflict(s0))
-        self.assertTrue(t0.has_conflict(s2))
-        self.assertTrue(t0.has_conflict(s1, 2, 2))
-
-        self.assertTrue(t1.has_conflict(s2)) # Too large to merge; conflict
-        self.assertFalse(t1.has_conflict(s0))
-        self.assertFalse(t1.has_conflict(s3, 1, 1))
-
-        self.assertTrue(t2.has_conflict(s1))
-        self.assertTrue(t2.has_conflict(s2))
-        self.assertFalse(t2.has_conflict(s3))
-        self.assertFalse(t2.has_conflict(s4))
+        # Should only have conflicts with >1x1 grids
+        lshape = Grid.from_data([[1, 0], [1, 1]])
+        self.assertFalse(lshape.has_conflict(Grid.from_data([[1]]), 1, 0))
+        self.assertFalse(lshape.has_conflict(Grid.from_data([[0, 1], [0, 0]])))
+        oshape = Grid.from_data([[1, 1], [1, 1]])
+        self.assertTrue(oshape.has_conflict(Grid.from_data([[0, 0, 1], [0, 0, 0]])))
+        self.assertFalse(oshape.has_conflict(Grid(2, 2)))
+        self.assertTrue(oshape.has_conflict(Grid(3, 3), 5, 5))
 
     def test_merge(self):
         parent0 = Grid(2, 2)
@@ -134,6 +158,19 @@ class TestGrid(unittest.TestCase):
         sample0 = Grid(2, 3)
         self.assertEqual(sample0.get_rows(0, 0), [[0, 0, 0]])
         self.assertEqual(sample0.get_rows(0, 1), sample0._grid)
+
+    def test_get_cols(self):
+        dummy = Grid.from_data([
+            [1, 0, 0],
+            [1, 0, 0],
+            [0, 1, 0]
+        ])
+        self.assertListEqual(dummy.get_cols(0, 2), [
+            [1, 1, 0], [0, 0, 1], [0, 0, 0]
+        ])
+        self.assertListEqual(dummy.get_cols(1, 2), [
+            [0, 0, 1], [0, 0, 0]
+        ])
 
     def test_row_is_zero(self):
         zeros = Grid(1, 4)

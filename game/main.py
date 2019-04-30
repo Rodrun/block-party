@@ -16,7 +16,7 @@ pygame.init()
 screen = pygame.display.set_mode([0, 0], pygame.NOFRAME)
 screen_rect = screen.get_rect()
 clock = pygame.time.Clock()
-pygame.key.set_repeat(60, REPEAT)
+#pygame.key.set_repeat(60, REPEAT)
 running = True
 
 singleplayer = json.load(open("config/singleplayer.json"))

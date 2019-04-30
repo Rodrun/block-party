@@ -40,25 +40,34 @@ class Step:
         """Get value of step."""
         return self._value
 
+    def is_rotate(self) -> bool:
+        """Is this step a rotation step?"""
+        return self._type == "rotate"
+
 
 class ActiveBlock:
     """Basic active block data.
     An active block is one that isn't placed on the field (yet)."""
 
-    def __init__(self, x: int, y: int, data: list, ghost: bool = False):
-        self.reset(x, y, data, ghost)
+    def __init__(self, x: int, y: int, data: list, ghost: bool = False,
+        rotations: int = 0, name=""):
+        self.reset(x, y, data, ghost, rotations, name)
 
     @classmethod
     def copy(cls, other: ActiveBlock, ghost: bool = False):
         """Copy another ActiveBlock."""
-        return cls(other.x, other.y, other._grid._grid[:], ghost)
+        return cls(other.x, other.y, other._grid._grid[:], ghost,
+            other.rotations, other.name)
 
-    def reset(self, x: int, y: int, data: list, ghost: bool = False):
+    def reset(self, x: int, y: int, data: list, ghost: bool = False,
+        rot: int = 0, name: str = ""):
         """Reset position and grid data."""
         self.x = x
         self.y = y
         real_data = data[:] if not ghost else util.apply_multiplier(data, -1)
         self._grid = Grid.from_data(real_data)
+        self.rotations = rot # Rotations from spawn rotation
+        self.name = name
 
     def get_position(self) -> tuple:
         """Get the current position on the field."""
@@ -73,6 +82,12 @@ class ActiveBlock:
             elif s_type == "vertical":
                 self.y += step.get_value()
             elif s_type == "rotate":
+                # Warn: Assumes only 1 or 3 rotations is passed in as value!
+                self.rotations += 1 if step.get_value() == 1 else -1
+                if self.rotations < 0:
+                    self.rotations = 3
+                elif self.rotations > 3:
+                    self.rotations = 0
                 self._grid.rotate90(step.get_value())
 
     def get_grid(self) -> Grid:
@@ -85,6 +100,25 @@ class ActiveBlock:
 
 class PlayField:
     """Handles the active block and its collisions."""
+
+    # Wall kick coordinate pairs, Y is inverted
+    _KICK = {
+        # TTC's SRS variation
+        "0": [(0, 0)],
+        "1": [(1, 0), (1, -1), (0, 2), (1, 2)],
+        "2": [(0, 0)],
+        "3": [(-1, 0), (-1, -1), (0, 2), (-1, 2)],
+        # O block
+        "0O": [(0, 0)],
+        "1O": [(0, -1)],
+        "2O": [(-1, -1)],
+        "3O": [(-1, 0)],
+        # I block
+        "0I": [(-1, 0), (2, 0), (-1, 0), (2, 0)],
+        "1I": [(-1, 0), (0, 1), (0, -2)],
+        "2I": [(-1, 1), (1, 1), (-2, 1), (1, 0), (-2, 0)],
+        "3I": [(0, 1), (0, 1), (0, 1), (0, -1), (0, 2)]
+    }
 
     def __init__(self, block_data: dict, initial_block: str,
         initial_level: int = 0, level_speeds: list = [53],
@@ -163,7 +197,8 @@ class PlayField:
             else:
                 block, nm = self._blocks[i], i
             self._active.reset(*self._spawn_position,
-                util.apply_multiplier(block, multiplier))
+                util.apply_multiplier(block, multiplier),
+                name=nm)
             self._active_name = nm
         except(KeyError):
             print("Warning: tried to spawn invalid block '{}'".format(i))
@@ -204,10 +239,30 @@ class PlayField:
         """
         if step is not None:
             active_copy = ActiveBlock.copy(ab)
+            o_rotation = active_copy.rotations # Old rotations value
             active_copy.perform_step(step)
+
             if not self._field.has_conflict(active_copy.get_grid(),
                 active_copy.x, active_copy.y):
                 return active_copy
+            elif step.is_rotate():
+                # Store original coordinates
+                o_x, o_y = active_copy.get_position()
+                key = str(active_copy.rotations)
+                if ab.name == "O" or ab.name == "I":
+                    key += ab.name
+                tests = PlayField._KICK[key]
+                for kick in tests:
+                    active_copy.x += kick[0]
+                    active_copy.y -= kick[1] # Inverted Y
+
+                    conf = self._field.has_conflict(active_copy.get_grid(),
+                        active_copy.x, active_copy.y)
+                    if conf:
+                        active_copy.x = o_x
+                        active_copy.y = o_y
+                    else:
+                        return active_copy
         return None
 
     def try_step(self, step: Step) -> ActiveBlock:
