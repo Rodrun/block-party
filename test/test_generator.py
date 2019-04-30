@@ -22,6 +22,7 @@ class TestGenerator(unittest.TestCase):
 
     def test_pop_front(self):
         gen = generator.Generator(names=["O"], preview_size=3)
-        popped = gen.pop_front()
+        popped, n = gen.pop_front()
         self.assertEqual(popped, "O")
+        self.assertEqual(n, 0)
         self.assertGreaterEqual(len(gen.stack), gen.preview_size)

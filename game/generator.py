@@ -52,11 +52,17 @@ class Generator:
         else:
             raise TypeError("names must be instace of list")
 
-    def pop_front(self) -> int:
-        """Pop the front of the stack and return it."""
-        popped = self.names[self.stack.pop(0)]
+    def pop_front(self) -> tuple:
+        """Pop the front of the stack and return it.
+        Returns the string name of the font and its integer equivalent."""
+        front = self.stack.pop(0)
+        popped = self.names[front]
         self._fill_stack()
-        return popped
+        return popped, front
+
+    def get_front(self) -> tuple:
+        """Get the front of the list, but do not pop."""
+        return self.names[self.stack[0]], self.stack[0]
 
     def _fill_stack(self):
         """Fill the stack so it contains > preview_size elements."""

@@ -67,7 +67,7 @@ class BasicGridRenderer(GridRenderer):
                 if piece <= len(self.colors) and piece != 0:
                     # 0 means no color, 1 is the equivalent of colors[0]
                     # -1 is the equivalent to 1, but with alpha value
-                    color = self.colors[abs(piece)][:]
+                    color = self.colors[abs(piece) - 1][:]
                     if len(color) < 4 and piece < 0:
                         color.append(self.alpha)
                     surf.fill(color,

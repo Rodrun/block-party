@@ -13,8 +13,10 @@ TAS_REPEAT = 15
 
 # System
 pygame.init()
-screen = pygame.display.set_mode([0, 0], pygame.NOFRAME)
-screen_rect = screen.get_rect()
+screen = pygame.display.set_mode([0, 0], pygame.FULLSCREEN)
+winf = pygame.display.Info()
+screen_rect = pygame.Rect(0, 0, winf.current_w, winf.current_h)
+print(winf)
 clock = pygame.time.Clock()
 #pygame.key.set_repeat(60, REPEAT)
 running = True
@@ -23,6 +25,7 @@ singleplayer = json.load(open("config/singleplayer.json"))
 binds = singleplayer["binds"]
 
 background = pygame.image.load("res/image/blue_background.png")
+background = resize(background, dimensions(screen_rect))
 
 # Gameplay
 config = json.load(open("config/standard.json"))
@@ -36,8 +39,9 @@ board = Board(screen_rect.width, screen_rect.height, config["board"],
     block_data, block_cols, level_speeds, font, "player1", None, None)
 
 music_path = str(singleplayer["music"])
-pygame.mixer.music.load(music_path)
-pygame.mixer.music.play(-1)
+if pygame.mixer.get_init():
+    pygame.mixer.music.load(music_path)
+    pygame.mixer.music.play(-1)
 
 fps = 60
 while running:
@@ -55,7 +59,6 @@ while running:
                         board.performInput(name)
 
     board.update(1 / fps)
-    resize(background, pygame.display.get_surface().get_size())
 
     screen.blit(background, (0, 0), None, pygame.BLEND_RGBA_MAX)
     board.draw(screen)

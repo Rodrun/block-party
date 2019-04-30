@@ -112,6 +112,7 @@ class Board(pygame.sprite.LayeredDirty):
         # Renderers
         self._renderer = BasicGridRenderer(block_cols, self._field.get_grid())
         self._hold_rend = BasicGridRenderer(block_cols, Grid(4, 4))
+        self._next_rend = BasicGridRenderer(block_cols, Grid(4, 4))
 
         self.set_score(self._score)
         self.set_name(self._name)
@@ -217,9 +218,11 @@ class Board(pygame.sprite.LayeredDirty):
     def _spawn_next(self, name: str = ""):
         """Spawn next generated block."""
         if name == "":
-            self._field.spawn(self._generator.pop_front())
+            front, mult = self._generator.pop_front()
+            self._field.spawn(front, mult + 1)
         else:
             self._field.spawn(name)
+        self.redraw_next()
 
     def _setup(self, config: dict):
         try:
@@ -254,3 +257,12 @@ class Board(pygame.sprite.LayeredDirty):
         """Update content Surface of a HUD board."""
         if name in self._displays:
             self._displays[name].update_content(content)
+
+    def redraw_next(self):
+        """Update the Next block preview board."""
+        dest = pygame.Surface((250, 250))
+        name, mul = self._generator.get_front()
+        self._next_rend.grid = self._field.get_block(name).get_grid()
+        self._next_rend.grid.apply_multiplier(mul + 1)
+        self._next_rend.render(dest)
+        self.update_board("next", dest)
