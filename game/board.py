@@ -5,7 +5,7 @@ import pygame
 from pygame.locals import *
 
 from game.playfield import PlayField, Step
-from game.component import Text, HUDDisplay
+from game.component import Text, HUDDisplay, render_text
 from game.generator import Generator
 from game.renderer import BasicGridRenderer, get_cell_dim
 from game import util
@@ -13,7 +13,7 @@ from game.grid import Grid
 
 
 class GameInput:
-    """Basic set of possible inputs for the board."""
+    """Board input constant names."""
 
     @staticmethod
     def rotate_left() -> str:
@@ -100,6 +100,8 @@ class Board(pygame.sprite.LayeredDirty):
         self._held = "" # Held block name
         self._hold_ready = True # Able to hold block at the moment?
         self.placed = False # Active block placed?
+        self._lines = 0
+        self._level = 0
 
         # Generator
         self._generator = Generator(list(block_data.keys()), 4)
@@ -115,7 +117,9 @@ class Board(pygame.sprite.LayeredDirty):
         self._next_rend = BasicGridRenderer(block_cols, Grid(4, 4))
 
         self.set_score(self._score)
+        self.set_lines(0)
         self.set_name(self._name)
+        self.set_level(0)
 
     def update(self, dt: float):
         # HUD
@@ -134,6 +138,11 @@ class Board(pygame.sprite.LayeredDirty):
             filled = self._field.get_filled_rows()
             if len(filled) > 0:
                 self._field.clear_filled_rows()
+                # Adjust metrics
+                self.set_score(self._score +
+                    util.get_points(self._field.get_level(), len(filled)))
+                self.set_lines(self._lines + len(filled))
+                self.set_level(int(self._lines / 10))
             self._spawn_next()
             self._hold_ready = True
 
@@ -145,12 +154,6 @@ class Board(pygame.sprite.LayeredDirty):
             self._fall_time = 0
             self.placed = self._field.step(Step.vertical())
 
-    def _step(self, step: Step) -> bool:
-        """Perform a step.
-        Returns if placed.
-        """
-        pass # TODO
-
     def has_lost(self) -> bool:
         """Check if current step has caused game over."""
         return self._prev_pos == self._field.get_spawn_position()
@@ -159,17 +162,23 @@ class Board(pygame.sprite.LayeredDirty):
         """Set current score."""
         self._score = abs(score)
         self.update_board("points",
-            Text(util.format_int(self._score), self._font).image)
+            render_text(util.format_int(self._score), self._font))
 
     def set_name(self, name: str):
         """Set player name."""
         self._name = name
-        self.update_board("name", Text(name, self._font).image)
+        self.update_board("name", render_text(self._name, self._font))
 
     def set_lines(self, count: int):
         """Set the lines cleared."""
-        self._lines = lines
-        self.update_board("lines", Text(name, self._font).image)
+        self._lines = count
+        self.update_board("lines", render_text(str(self._lines), self._font))
+
+    def set_level(self, n: int):
+        """Set the current level."""
+        self._level = n
+        self._field.set_level(self._level)
+        self.update_board("level", render_text(str(self._level), self._font))
 
     def performInput(self, inp: str):
         """Perform a game input command."""

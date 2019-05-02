@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" type="text/css" href="css/controller.css">
+</head>
+
+<body scroll="no">
+    <articlie class="ipinp-grid-container">
+        <h1 class="ipinp-title rotate-scale-up-ver">Block Party</h1>
+        <input type="text" id="ipinput" class="ipinp-text" placeholder="IP address">
+        <button id="submit" class="ipinp-btn" onclick="onSubmit()">Submit</button>
+    </articlie>
+    <article class="bt-grid-container hidden" onload="setupButtons()">
+        <div data-input="left" data-hold="true" class="bt bt-left red-bt"><span>L</span></div>
+        <div data-input="right" data-hold="true" class="bt bt-right red-bt"><span>R</span></div>
+        <div data-input="b" data-hold="false" class="bt bt-b red-bt"><span>B</span></div>
+        <div data-input="a" data-hold="false" class="bt bt-a red-bt"><span>A</span></div>
+        <div data-input="hold" data-hold="false" class="bt bt-hold red-bt"><span>Hold</span></div>
+        <div data-input="hard" data-hold="false" class="bt bt-hard red-bt"><span>Drop</span></div>
+        <div data-input="soft" data-hold="true" class="bt bt-soft red-bt"><span>D</span></div>
+        <script src="js/lib/socket.io.js" type="text/javascript"></script>
+        <script src="js/controller.js" type="text/javascript"></script>
+    </article>
+</body>
+
+</html>

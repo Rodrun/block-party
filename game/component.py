@@ -5,6 +5,12 @@ from pygame.locals import *
 from game import util
 
 
+# TODO: Remove the Text component; its basically useless at this point
+def render_text(txt: str, font: pygame.font.Font,
+    color = (255, 255, 255)) -> pygame.Surface:
+    return font.render(txt, True, color)
+
+
 class Text(pygame.sprite.DirtySprite):
 
     def __init__(self, txt: str, font: pygame.font.Font,
