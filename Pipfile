@@ -7,9 +7,9 @@ verify_ssl = true
 
 [packages]
 pygame = "*"
-pyinstaller = "*"
 python-socketio = "*"
-httpserver = "*"
+flask = "*"
+eventlet = "*"
 
 [requires]
 python_version = "3.7"
