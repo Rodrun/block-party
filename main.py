@@ -3,6 +3,7 @@ from multiprocessing import Manager
 from queue import Queue
 from json import load, loads
 import time
+import os
 
 from uuid import uuid4
 import eventlet
@@ -132,7 +133,8 @@ def pageWorker():
         except:
             pass
     
-    sockets.run(app, port="8080", log_output=False)
+    sockets.run(app, port=os.environ.get("PORT", 33507), log_output=False,
+        host="0.0.0.0")
 
 
 class GameThread(Thread):
