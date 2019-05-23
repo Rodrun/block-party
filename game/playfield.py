@@ -1,7 +1,5 @@
 from __future__ import annotations
 from random import choice
-import pygame
-from pygame.locals import *
 
 from game.grid import Grid
 from game import util

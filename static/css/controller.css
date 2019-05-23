@@ -1,14 +1,18 @@
 html,
 body {
     height: 100%;
-    background-color: #494545;
     overflow: hidden;
     font-family: Arial;
     color: whitesmoke;
+    background-color: gray;
 }
 
 .hidden {
     display: none !important;
+}
+
+.visible {
+    display: inherit;
 }
 
 .bt-grid-container {
