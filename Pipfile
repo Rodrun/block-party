@@ -10,6 +10,11 @@ pygame = "*"
 python-socketio = "*"
 flask = "*"
 eventlet = "*"
+redis = "*"
+flask-sockets = "*"
+gunicorn = "*"
+pybase62 = "*"
+flask-socketio = "*"
 
 [requires]
 python_version = "3.7"

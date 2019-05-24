@@ -1,15 +1,8 @@
-import pygame
-from pygame.locals import *
-
 import unittest
 from game import util
 
 
 class TestUtil(unittest.TestCase):
-
-    def setUp(self):
-        pygame.init()
-        self.font = pygame.font.SysFont(",".join(pygame.font.get_fonts()), 4)
 
     def test_get_points(self):
         # Test table
@@ -32,40 +25,6 @@ class TestUtil(unittest.TestCase):
                     ))
         self.assertEqual(util.get_points(1, -1), 0)
         self.assertEqual(util.get_points(0, 5), 0)
-
-    def test_resize(self):
-        SIZE = (4, 4)
-        TARGET_SIZES = [(5, 5), (1, 4), (3, 2)]
-        dummy = pygame.Surface(SIZE)
-        for target_size in TARGET_SIZES:
-            rescaled = util.resize(dummy, target_size)
-            self.assertEqual(rescaled.get_size(), target_size,
-                "Resize should return Surface with expected target size")
-
-
-    def test_fit(self):
-        tall = pygame.Rect(0, 0, 50, 100)
-        wide = pygame.Rect(0, 0, 100, 50)
-        #big = pygame.Rect(0, 0, 150, 250)
-        #small = pygame.Rect(0, 0, 25, 25)
-        TABLE = [ # proportionKeep = True table
-            # src, dest, expected output, proportionKeep
-            tall, tall, tall, True,
-            tall, wide, pygame.Rect(0, 0, 25, 50), True,
-            wide, tall, pygame.Rect(0, 0, 50, 25), True,
-            wide, tall, tall, False
-        ]
-
-        def table_tests(table):
-            for i in range(0, len(table), 4):
-                src = table[i]
-                dest = table[i + 1]
-                expected = table[i + 2]
-                proportionKeep = table[i + 3]
-                actual = util.fit(src, dest, proportionKeep)
-                self.assertEqual(actual, expected,
-                    "srcRect = " + str(src) + " | destRect = " + str(dest))
-        table_tests(TABLE)
 
     def test_format_int(self):
         self.assertEqual("03", util.format_int(3, 2))

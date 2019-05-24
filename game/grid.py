@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import pygame
-from pygame.locals import *
-
 from game import util
 
 
