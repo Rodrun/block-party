@@ -3,15 +3,21 @@
 <head>
     <title>Block Party Host</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
-    <script src="js/host.js"></script>
     <link rel="stylesheet" type="text/css" href="css/host.css">
 </head>
 <body>
     <div id="load">
-        <p style="font-size:xx-large" id="roomid">Loading room ID...</p>
-        <small>Yeah the ID is super long.</small>
+        <h1>Block Party: Host Game Room.</h1>
+        <p style="font-size:xx-large; text-align:center;" class="visible" id="roomid">Loading room ID...</p>
+        <small>Yeah the ID is super long. Players connect to:</small><br>
+        <span style="font-size:larger">blockpartyapcsa.herokuapp.com/</span><br>
     </div>
-    <div id="game">
-    </div>
+    <canvas id="output" resize></canvas>
+    <!--<script crossorigin src="https://unpkg.com/react@16/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.production.min.js"></script>-->
+    <script crossorigin src="https://unpkg.com/react@16/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
+    <script src="js/two.js"></script>
+    <script src="js/host.js"></script>
 </body>
 </html>

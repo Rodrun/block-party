@@ -49,6 +49,9 @@ class Grid:
         return "w: {} x h: {} :: {}" \
             .format(*self.get_dimensions(), str(self._grid))
 
+    def get_raw(self) -> list:
+        return self._grid[:]
+
     def set_at(self, x: int, y: int, value: int = 0):
         self._grid[y][x] = value
 

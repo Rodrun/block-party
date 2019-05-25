@@ -92,6 +92,10 @@ class Board:
         self.set_name(self._name)
         self.set_level(0)
 
+    def get_raw_grid(self) -> list:
+        """Get the raw grid data, with ghost block."""
+        return self._field.get_view().get_raw()
+
     def update(self, dt: float):
         # Line clear check/place check
         if self.placed:
