@@ -8,7 +8,7 @@ import os
 from uuid import uuid4
 import eventlet
 from flask import Flask, Blueprint, send_from_directory, render_template, request
-from flask_socketio import SocketIO, join_room, leave_room, emit
+from flask_socketio import SocketIO, join_room, leave_room, emit, close_room
 import base62
 
 from game.board import Board
@@ -60,12 +60,10 @@ def pageWorker():
     blocks = load(open(BLOCKS_PATH))
     frames = load(open(FRAMES_PATH))
 
-    @sockets.on("host")
+    @sockets.on("host", namespace="/host")
     def host():
         hid = request.sid
         print(f"New host {hid}")
-        #new_q.put(hid)
-        #sockets.emit("host greet", { "room_id": hid })
         with room_lock:
             if len(rooms) < THREADS_LIMIT:
                 uid = str(base62.encode(uuid4().int))
@@ -73,7 +71,6 @@ def pageWorker():
                 new_q.put(uid)
             else:
                 print("Warning: maximum capacity reached for game threads")
-
 
     @sockets.on("join")
     def join(data):
@@ -92,14 +89,17 @@ def pageWorker():
                 "room": room_id,
                 "bid": board_id
             }
-            sockets.emit("joined room", ret_data)
             print(f"Player joined room: {ret_data}")
+
+            # Add to room
             with room_lock:
-                if len(rooms[room_id].boards) >= 2:
-                    rooms[room_id].state_q.put("start")
-        except:
-            print("An error occurred on join")
-            return False
+                room = rooms[room_id]
+                room.boards[board_id] = room.new_board()
+                if len(room.boards) >= 2:
+                    print(f"Sending start signal to {room_id}")
+                    room.state_q.put("start")
+        except Exception as e:
+            print(f"An error occurred on join {e}")
 
     @sockets.on("leave")
     def leave(data):
@@ -114,24 +114,20 @@ def pageWorker():
             leave_room(room_id)
             with room_lock:
                 del rooms[room_id].boards[bid]
-        except:
-            print("Error occurred when leaving room.")
+        except Exception as e:
+            print(f"Error occurred when leaving room: {e}")
 
     @sockets.on("input")
     def inp(msg):
         try:
             formatted = loads(msg)
             room = formatted["room"]
-            board_id = request.namespace.socket.sessid
+            board_id = formatted["bid"]
             command = formatted["command"]
-            formatted["bid"] = request.namespace.socket.sessid
-            formatted["new"] = True
             print(f"Input: {str(formatted)} from {board_id}")
-            #with games:
-            #   games[room].boards[board_id].performInput(command)
             inp_q.put(formatted)
-        except:
-            pass
+        except Exception as err:
+            print(f"Input error: {err}")
     
     sockets.run(app, port=os.environ.get("PORT", 33507), log_output=False,
         host="0.0.0.0")
@@ -152,7 +148,7 @@ class GameThread(Thread):
         self.expire_time = 0
         self._blocks = blocks
         self._frames = frames
-        self.boards = {} # Keys will be client socket sessid
+        self.boards = {} # Keys will be board ID (bid)
         self.state_q = state_q if state_q else Queue()
         self.input_q = input_q if input_q else Queue()
         self.running = False # Game active?
@@ -161,15 +157,28 @@ class GameThread(Thread):
         return Board(10, 20, self._blocks, self._frames)
 
     def board_update(self):
-        for b in self.boards:
+        """Update all player boards.
+        Returns list of dictionary of board IDs and their raw grid data. REady
+        to send to host client in following JSON format:
+        {
+            "bid": Str,
+            "grid": list
+        }
+        """
+        result = []
+        for bid, b in self.boards.items():
             b.update(1 / 60)
+            result.append({ "bid": bid, "grid": b.get_raw_grid() })
+        return result
 
     def run(self):
         while self.polling:
             if self.state_q.get() == "start":
                 print(f"({self.name}) Received start in state queue")
                 self.polling = False
-        self.start_game()
+                self.start_game()
+                break
+        self.destroy()
 
     def performInput(self, inp):
         """Add an input command to the input queue."""
@@ -178,29 +187,35 @@ class GameThread(Thread):
     def start_game(self):
         sockets.emit("start", room=self.name)
         self.running = True
-        while self.running and len(self.boards) == 2:
+        current = None # Current frame's grid from update
+        last = None # Last frame's grid from update
+        while self.running and len(self.boards) >= 2:
             try:
-                if self.state_q.get_nowait() == "stop":
+                if self.state_q.get_nowait() == "stop": # Currently unused
                     print(f"({self.name}) Received stop in state queue")
                     self.running = False
                 for i in range(INPUT_LIMIT):
                     inp = self.input_q.get_nowait()
                     self.boards[inp[0]].performInput(inp[1])
-            except:
+            except: # get_nowait
                 pass
-            self.board_update()
-            for b in self.boards:
+
+            for bid, b in self.boards.items():
                 self.running = not b.has_lost()
-            
-            # Send grid data of both boards
-            grid_data = {}
+                if not self.running:
+                    print(f"({self.name}) Player {bid} has lost")
+                    break
+            # Send new boards
+            # TODO: Optimize later
+            if current != None:
+                last = current[:]
+            current = self.board_update()
+            if current != last:
+                sockets.emit("update", current, room=self.name, namespace="/host")
             time.sleep(.016)
-        self.destroy()
 
     def destroy(self):
-        self.polling = False
         print(f"({self.name}) Ending.")
-        self.join()
 
 
 def deadCheckWorker():
@@ -213,8 +228,10 @@ def deadCheckWorker():
             for key in list(rooms.keys()):
                 if current >= rooms[key].expire_time and not rooms[key].running:
                     print(f"{key} has been inactive, killing...")
-                    rooms[key].polling = False
+                    rooms[key].polling = False # Possible data race?
                     del rooms[key]
+                    print(f"Active rooms:\n{list(rooms.keys())}")
+
 
 def restartingThread():
     """Handles creation of new game threads."""
@@ -231,14 +248,24 @@ def restartingThread():
                 game_thread.expire_time = time.perf_counter() + EXPIRE_TIME
                 rooms[hid] = game_thread
                 game_thread.start()
-                sockets.emit("host greet", {"room_id": hid}, room=hid)
+                sockets.emit("host greet",
+                    {"room_id": hid},
+                    room=hid,
+                    namespace="/host")
                 print(f"Started new game thread with ID {hid}")
             else:
                 print("Warning: maximum capacity reached for game threads")
 
 
 def inputWorker():
-    """Distribute the inputs to their respective room and boards."""
+    """Distribute the inputs to their respective room and boards.
+    Expected input format (JSON blob).
+    {
+        "room": String,
+        "bid": String,
+        "command": String
+    }
+    """
     print("Starting input worker...")
     while True:
         inp = inp_q.get()

@@ -5,30 +5,20 @@
     <meta charset="UTF-8">
     <title>Block Party</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
     <link rel="stylesheet" type="text/css" href="css/controller.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
-    <script src="js/controller.js"></script>
 </head>
 
 <body scroll="no">
-    <article id="intro" class="ipinp-grid-container visible">
-        <h1 class="ipinp-title tracking-in-expand">Block Party</h1>
-        <input type="text" id="ipinput" class="ipinp-text" placeholder="Room ID">
-        <button id="submit" class="ipinp-btn" onclick="onSubmit()">Submit</button>
-    </article>
-    <article id="wait" class="hidden">
-        <h2>You are: <span style="font-size:large" id="boardid">...</span></h2>
-        <h4>In room <span style="font-size:small" id="roomid">...</span></h4>
-    </article>
-    <article id="controller" class="bt-grid-container hidden">
-        <div data-input="left" data-hold="true" class="bt bt-left red-bt"><span>L</span></div>
-        <div data-input="right" data-hold="true" class="bt bt-right red-bt"><span>R</span></div>
-        <div data-input="b" data-hold="false" class="bt bt-b red-bt"><span>B</span></div>
-        <div data-input="a" data-hold="false" class="bt bt-a red-bt"><span>A</span></div>
-        <div data-input="hold" data-hold="false" class="bt bt-hold red-bt"><span>Hold</span></div>
-        <div data-input="hard" data-hold="false" class="bt bt-hard red-bt"><span>Drop</span></div>
-        <div data-input="soft" data-hold="true" class="bt bt-soft red-bt"><span>D</span></div>
-    </article>
+    <div id="intro"></div>
+    <div id="wait"></div>
+    <div id="play" class="ipinp-grid-container"></div>
+    <script crossorigin src="https://unpkg.com/react@16/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-transition-group/4.0.1/react-transition-group.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reactstrap/4.8.0/reactstrap.min.js"></script>
+    <script src="js/controller.js"></script>
 </body>
 
 </html>
