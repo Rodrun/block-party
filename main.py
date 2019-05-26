@@ -5,7 +5,9 @@ from json import load, loads
 import time
 import os
 
-from uuid import uuid4
+#from uuid import uuid4
+from shortuuid import uuid
+from shortuuid import encode
 from flask import Flask, Blueprint, send_from_directory, render_template, request
 from flask_socketio import SocketIO, join_room, leave_room, emit, close_room
 import base62
@@ -54,7 +56,7 @@ def host():
 
 @html.route("/music/<path:path>")
 def music(path):
-    return send_from_directory("static", path)
+    return send_from_directory("static/music", path)
 
 
 def pageWorker():
@@ -71,7 +73,9 @@ def pageWorker():
         print(f"New host {hid}")
         with room_lock:
             if len(rooms) < THREADS_LIMIT:
-                uid = str(base62.encode(uuid4().int))
+                uid = uuid()[:10] # More chance of duplicate
+                                  # But 'rare enough'
+                print(f"UUID generated: {uid}")
                 join_room(uid)
                 new_q.put(uid)
             else:
@@ -193,8 +197,7 @@ class GameThread(Thread):
         input_q.put(inp)
 
     def start_game(self):
-        print(sockets)
-        print(f"({self.name}) Starting game")
+        sockets.emit("start game", room=self.name, namespace="/host")
         self.running = True
         current = None # Current frame's grid from update
         last = None # Last frame's grid from update
@@ -220,11 +223,11 @@ class GameThread(Thread):
                 last = current[:]
             current = self.board_update()
             if current != last:
-                #sockets.emit("update", current, room=self.name, namespace="/host")
-                out_q.put({
-                    "room": self.name,
-                    "data": current
-                })
+                sockets.emit("update", current, room=self.name, namespace="/host")
+                #out_q.put({
+                #    "room": self.name,
+                #    "data": current
+                #})
             time.sleep(.016)
 
     def destroy(self):
@@ -271,19 +274,6 @@ def restartingThread():
                 print("Warning: maximum capacity reached for game threads")
 
 
-def outputWorker():
-    """Distribute game thread outputs."""
-    global sockets
-    print("Starting output worker...")
-    while True:
-        output = out_q.get()
-        try:
-            with app.app_context():
-                sockets.emit("update", output["data"], namespace="/host", room=output["room"])
-        except Exception as e:
-            print(f"Output error: {e}")
-
-
 def inputWorker():
     """Distribute the inputs to their respective room and boards.
     Expected input format (JSON blob).
@@ -314,12 +304,10 @@ page_thread = Thread(target=pageWorker, name="page")
 handler_thread = Thread(target=restartingThread, name="handler")
 input_thread = Thread(target=inputWorker, name="input")
 kill_thread = Thread(target=deadCheckWorker, name="killer")
-out_thread = Thread(target=outputWorker, name="output")
 page_thread.start()
 handler_thread.start()
 input_thread.start()
 kill_thread.start()
-out_thread.start()
 """
 eventlet.spawn(pageWorker)
 eventlet.spawn(restartingThread)

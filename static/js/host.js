@@ -1,6 +1,14 @@
 let canvas = document.getElementById("output")
 let twoConfig = { width: window.width, height: window.height, fullscreen: true }
 let two = new Two(twoConfig).appendTo(canvas)
+const waitSound = new Howl({
+    src: ["music/Dance_of_the_salty_boys.ogg"],
+    loop: true
+})
+const gameSound = new Howl({
+    src: ["music/Tetris_D_Theme.ogg"],
+    loop: true
+})
 const socket = io("/host")
 
 const WIDTH = two.height / 20
@@ -9,22 +17,18 @@ let fields = [
     new field(WIDTH * 10 + 10, 0, WIDTH)
 ] // Fields to be drawn; for now just 2
 
-let dummy = two.makeRectangle(WIDTH * 10, 0, 100, 100)
-dummy.fill = "red"
-two.update()
-
 socket.on("connect", () => {
-    console.log("Connected")
+    waitSound.play()
 })
 
 socket.emit("host")
 
 socket.on("start game", () => {
-    console.log("Starting game")
+    waitSound.stop()
+    gameSound.play()
 })
 
 socket.on("host greet", (data) => {
-    console.log(data)
     document.getElementById("roomid").innerHTML = `${spaceOut(data["room_id"])}`
 })
 
@@ -40,9 +44,7 @@ socket.on("update", (data) => {
     // Naive assumption that at least two boards are available!
     for (let i = 0; i < 2; i++) {
         let info = data[i]
-        //let bid = data["bid"]
         let grid = info["grid"]
-        console.log(`Updating: ${grid}`)
         fields[i].draw(grid)
     }
     two.update()

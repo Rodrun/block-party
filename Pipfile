@@ -14,6 +14,7 @@ flask-sockets = "*"
 gunicorn = "*"
 pybase62 = "*"
 flask-socketio = "*"
+shortuuid = "*"
 
 [requires]
 python_version = "3.7"
