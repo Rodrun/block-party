@@ -6,7 +6,6 @@ import time
 import os
 
 from uuid import uuid4
-import eventlet
 from flask import Flask, Blueprint, send_from_directory, render_template, request
 from flask_socketio import SocketIO, join_room, leave_room, emit, close_room
 import base62
@@ -25,10 +24,11 @@ EXPIRE_TIME = 60 * 6 # Seconds until a game can be considered for death,
 
 new_q = Queue() # New host queue
 inp_q = Queue() # Input queue
+out_q = Queue() # Output queue
 room_lock = RLock()
 rooms = {} # Dictionary of 'rooms' aka GameThreads
 app = Flask(__name__)
-sockets = SocketIO(app) # SocketIO, started in page worker
+sockets = SocketIO(app, async_mode="threading") # SocketIO, started in page worker
 html = Blueprint("html", __name__, "static", template_folder="static")
 
 
@@ -52,6 +52,11 @@ def host():
     return send_from_directory("static", "host.html")
 
 
+@html.route("/music/<path:path>")
+def music(path):
+    return send_from_directory("static", path)
+
+
 def pageWorker():
     """Static page serving and SocketIO."""
     print("Starting page worker...")
@@ -72,6 +77,10 @@ def pageWorker():
             else:
                 print("Warning: maximum capacity reached for game threads")
 
+    @sockets.on_error_default
+    def all_error_handler(e):
+        print(f"SocketIO Error: {e}")
+
     @sockets.on("join")
     def join(data):
         """
@@ -79,9 +88,11 @@ def pageWorker():
             room - Room ID to join.
         """
         try:
+            data = loads(data)
             room_id = str(data["room"])
             with room_lock:
                 if room_id not in rooms:
+                    print(f"{room_id} is not a valid room!")
                     return False
             join_room(room_id)
             board_id = request.sid
@@ -99,7 +110,7 @@ def pageWorker():
                     print(f"Sending start signal to {room_id}")
                     room.state_q.put("start")
         except Exception as e:
-            print(f"An error occurred on join {e}")
+            print(f"An error occurred on join: {e}")
 
     @sockets.on("leave")
     def leave(data):
@@ -109,6 +120,7 @@ def pageWorker():
             bid - Board ID.
         """
         try:
+            data = loads(data)
             room_id = str(data["room"])
             bid = str(data["bid"])
             leave_room(room_id)
@@ -121,16 +133,13 @@ def pageWorker():
     def inp(msg):
         try:
             formatted = loads(msg)
-            room = formatted["room"]
-            board_id = formatted["bid"]
-            command = formatted["command"]
-            print(f"Input: {str(formatted)} from {board_id}")
+            formatted["bid"] = request.sid
             inp_q.put(formatted)
         except Exception as err:
             print(f"Input error: {err}")
     
     sockets.run(app, port=os.environ.get("PORT", 33507), log_output=False,
-        host="0.0.0.0")
+        host="0.0.0.0", debug=False)
 
 
 class GameThread(Thread):
@@ -174,8 +183,7 @@ class GameThread(Thread):
     def run(self):
         while self.polling:
             if self.state_q.get() == "start":
-                print(f"({self.name}) Received start in state queue")
-                self.polling = False
+                polling = False
                 self.start_game()
                 break
         self.destroy()
@@ -185,7 +193,8 @@ class GameThread(Thread):
         input_q.put(inp)
 
     def start_game(self):
-        sockets.emit("start", room=self.name)
+        print(sockets)
+        print(f"({self.name}) Starting game")
         self.running = True
         current = None # Current frame's grid from update
         last = None # Last frame's grid from update
@@ -211,11 +220,16 @@ class GameThread(Thread):
                 last = current[:]
             current = self.board_update()
             if current != last:
-                sockets.emit("update", current, room=self.name, namespace="/host")
+                #sockets.emit("update", current, room=self.name, namespace="/host")
+                out_q.put({
+                    "room": self.name,
+                    "data": current
+                })
             time.sleep(.016)
 
     def destroy(self):
         print(f"({self.name}) Ending.")
+
 
 
 def deadCheckWorker():
@@ -240,7 +254,6 @@ def restartingThread():
     frames = load(open("config/frames.json"))
     while True:
         hid = new_q.get() # Unique room ID as string
-        print(f"New host ID in queue: {hid}")
         with room_lock:
             if len(rooms) < THREADS_LIMIT:
                 game_thread = GameThread(None, None, blocks, frames)
@@ -248,13 +261,27 @@ def restartingThread():
                 game_thread.expire_time = time.perf_counter() + EXPIRE_TIME
                 rooms[hid] = game_thread
                 game_thread.start()
+                #eventlet.spawn(game_thread.run)
                 sockets.emit("host greet",
                     {"room_id": hid},
                     room=hid,
                     namespace="/host")
-                print(f"Started new game thread with ID {hid}")
+                #sockets.emit("start game", room=hid, namespace="/host")
             else:
                 print("Warning: maximum capacity reached for game threads")
+
+
+def outputWorker():
+    """Distribute game thread outputs."""
+    global sockets
+    print("Starting output worker...")
+    while True:
+        output = out_q.get()
+        try:
+            with app.app_context():
+                sockets.emit("update", output["data"], namespace="/host", room=output["room"])
+        except Exception as e:
+            print(f"Output error: {e}")
 
 
 def inputWorker():
@@ -269,17 +296,33 @@ def inputWorker():
     print("Starting input worker...")
     while True:
         inp = inp_q.get()
-        print(f"Got input {inp}")
+        if not contains(inp, ["room", "bid", "command"]):
+            continue
         with room_lock:
             if inp["room"] in rooms:
                 rooms[inp["room"]].boards[inp["bid"]].performInput(inp["command"])
 
 
+def contains(target: dict, keyList: list) -> bool:
+    """Check if all the keys in keyList are in target."""
+    for key in keyList:
+        if key not in target:
+            return False
+    return True
+
 page_thread = Thread(target=pageWorker, name="page")
 handler_thread = Thread(target=restartingThread, name="handler")
 input_thread = Thread(target=inputWorker, name="input")
 kill_thread = Thread(target=deadCheckWorker, name="killer")
+out_thread = Thread(target=outputWorker, name="output")
 page_thread.start()
 handler_thread.start()
 input_thread.start()
 kill_thread.start()
+out_thread.start()
+"""
+eventlet.spawn(pageWorker)
+eventlet.spawn(restartingThread)
+eventlet.spawn(inputWorker)
+eventlet.spawn(deadCheckWorker)
+"""

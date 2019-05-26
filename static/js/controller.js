@@ -2,33 +2,49 @@
 const e = React.createElement
 let roomid = ""
 let boardid = ""
-const socket = io()
+let socket = io()
+
+socket.on("error", (err) => {
+    console.log(err)
+})
 
 socket.on("connect", () => {
-    socket.on("start", (data) => {
-        console.log("Game start event")
-    })
+    console.log("Connected.")
+})
+
+socket.on("start game", (data) => {
+    console.log("Game start event")
+})
+
+socket.on("disconnect", () => {
+    console.log("Disconnected")
 })
 
 function sendInput(command) {
     if (socket) {
-        socket.emit("input", {
-            "room": roomid,
-            "bid": boardid,
-            "command": command
-        })
+        socket.emit("input", JSON.stringify({
+            room: roomid,
+            bid: boardid,
+            command: command
+        }))
     }
 }
 
+function sendJoin(rid) {
+    if (socket) {
+        outRid = rid.replace(/\s/g, "")
+        roomid = outRid
+        console.log(`Joining ${outRid}`)
+        socket.emit("join", JSON.stringify({"room": outRid}))
+    }
+}
 
 function Intro({ title }) {
     const [visible, setVisible] = React.useState(true)
     const [roomId, setRoomId] = React.useState("")
 
-    handleJoin = () => {
-        roomid = roomId
-        console.log(`Joining ${roomId}`)
-        socket.emit("join", { "room": roomId })
+    const handleJoin = () => {
+        sendJoin(roomId)
     }
 
     const form =

@@ -1,69 +1,52 @@
 let canvas = document.getElementById("output")
-let twoConfig = { width: document.width, height: document.height }
+let twoConfig = { width: window.width, height: window.height, fullscreen: true }
 let two = new Two(twoConfig).appendTo(canvas)
-two.update()
-let fields = [
-    new field(0, 0, two.height / 40),
-    new field(two.height / 40 * 10 + 10, 0, two.height / 40)
-] // Fields to be drawn; for now just 2
 const socket = io("/host")
 
+const WIDTH = two.height / 20
+let fields = [
+    new field(0, 0, WIDTH),
+    new field(WIDTH * 10 + 10, 0, WIDTH)
+] // Fields to be drawn; for now just 2
 
-/**
- * Very simplistic check if something is a function.
- */
-function isFunction(f) {
-    return typeof f === "function"
-}
+let dummy = two.makeRectangle(WIDTH * 10, 0, 100, 100)
+dummy.fill = "red"
+two.update()
 
+socket.on("connect", () => {
+    console.log("Connected")
+})
 
-/**
- * Hide oldId and show newId.
- * callback - Not necessary as of right now.
- */
-function switchVisibility(oldId, newId, callback) {
-    let oList = document.getElementById(oldId).classList
-    let nList = document.getElementById(newId).classList
-    oList.remove("visible")
-    oList.add("hidden")
-    nList.remove("hidden")
-    nList.add("visible")
-    if (isFunction(callback)) {
-        callback()
-    }
-}
+socket.emit("host")
 
+socket.on("start game", () => {
+    console.log("Starting game")
+})
 
 socket.on("host greet", (data) => {
     console.log(data)
-    document.getElementById("roomid").innerHTML =
-        `${spaceOut(data["room_id"])}`
-})
-
-socket.on("connect", () => {
-    console.log("Retrieving host room ID...")
-    socket.emit("host")
-})
-
-socket.on("start", () => {
-    console.log("Starting game")
-    switchVisibility("load", "output")
+    document.getElementById("roomid").innerHTML = `${spaceOut(data["room_id"])}`
 })
 
 socket.on("update", (data) => {
+    const elem = document.getElementById("load")
+    if (!elem.classList.contains("hidden")) {
+        elem.classList.add("hidden")
+    }
+    two.clear()
     // data is expected to be a list of objects, each with
     // a board ID and grid data (2D array)
     // For now, only the first two available will be dealt with
     // Naive assumption that at least two boards are available!
     for (let i = 0; i < 2; i++) {
-        console.log(`Updating: ${new String(data[i])}`)
         let info = data[i]
         //let bid = data["bid"]
         let grid = info["grid"]
+        console.log(`Updating: ${grid}`)
         fields[i].draw(grid)
     }
     two.update()
-})
+})    
 
 
 /**
@@ -110,7 +93,7 @@ function field(x, y, width, config) {
         "stroke_color": [ "rgb(95, 165, 94)" ],
         "stroke_width": 5,
         "grid_lines": true,
-        "lines_color": "rgba(52, 150, 51, 30)",
+        "lines_color": "rgb(52, 150, 51)",
         "grid_stroke": "1",
         "background_color": "rgb(171, 209, 115)"
     }
@@ -124,22 +107,23 @@ function field(x, y, width, config) {
         if (!data) return;
         for (let r = 0; r < data.length; r++) {
             for (let c = 0; c < data[r].length; c++) {
-                let x = c * this.width
-                let y = r * this.width
-                if (this.config["grid_lines"]) {
+                const value = data[r][c]
+                let x = this.x + c * this.width
+                let y = this.y + r * this.width
+                if (this.config["grid_lines"] && value == 0) {
                     let rect = two.makeRectangle(x, y, width, width)
                     rect.fill = this.config["background_color"]
                     rect.strokeColor = this.config["lines_color"]
-                    two.add(rect)
-                } else if (value != 0) {
+                    rect.lineWidth = this.config["grid_stroke"]
+                } else {
                     let rect = two.makeRectangle(x, y, width, width)
                     let cols = this.determineColor(data[r][c])
                     rect.fill = cols[0]
                     rect.strokeColor = cols[1]
+                    rect.lineWidth = this.config["stroke_width"]
                     if (value < 0) {
                         rect.opacity = .5
                     }
-                    two.add(rect)
                 }
             }
         }
@@ -152,7 +136,7 @@ function field(x, y, width, config) {
      * @returns Array of piece color and piece stroke color.
      */
     this.determineColor = function(value) {
-        value = abs(value) - 1
+        value = Math.abs(value) - 1
         let choices = this.config["color"]
         let color = choices[value - 1] || choices[0]
         let strokeChoices = this.config["stroke_color"]
