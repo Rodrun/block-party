@@ -147,13 +147,13 @@ def pageWorker():
     def inp(msg):
         try:
             formatted = loads(msg)
+            print(formatted)
             formatted["bid"] = request.sid
-            #inp_q.put(formatted)
-            if not contains(inp, ["room", "bid", "command"]):
+            if not contains(formatted, ["room", "bid", "command"]):
                 return
             with room_lock:
-                if inp["room"] in rooms:
-                    rooms[inp["room"]].boards[inp["bid"]].performInput(inp["command"])
+                if formatted["room"] in rooms:
+                    rooms[formatted["room"]].boards[formatted["bid"]].performInput(formatted["command"])
         except Exception as err:
             print(f"Input error: {err}")
     

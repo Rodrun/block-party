@@ -34,6 +34,7 @@ function joinAck(success, message, bid) {
     joinState = success
     if (success) {
         boardid = bid
+        console.log(bid)
         name = message
         globalState.value = "wait"
         ReactDOM.render(waitRoot, document.getElementById("wait"))
@@ -47,11 +48,13 @@ function joinAck(success, message, bid) {
  */
 function sendInput(command) {
     if (socket) {
-        socket.emit("input", JSON.stringify({
+        ou = JSON.stringify({
             room: roomid,
             bid: boardid,
             command: command
-        }))
+        })
+        console.log(ou)
+        socket.emit("input", ou)
     }
 }
 
@@ -103,7 +106,7 @@ function PlayerName({ state }) {
 }
 
 function ControllerBtn({ name, display, className }) {
-    return (e("div",
+    return (e("button",
         {
             "className": "bt " + (className || `bt-${name}`),
             "onClick": () => sendInput(name)
