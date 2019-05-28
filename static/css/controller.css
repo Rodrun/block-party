@@ -23,7 +23,7 @@ body {
     grid-template-areas: ". bt-hard . bt-hold""bt-left . bt-right bt-a"". bt-soft . bt-b";
 }
 
-.red-bt {
+.bt {
     background-color: #f56969;
     border-color: #ccc5c5;
     border-style: solid;

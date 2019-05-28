@@ -1,25 +1,50 @@
 //'use strict'
 const e = React.createElement
-let roomid = ""
-let boardid = ""
-let socket = io()
+const socket = io()
 
-socket.on("error", (err) => {
-    console.log(err)
-})
+// TODO: Consistent naming conventions
+let roomid = "" // ID of the game room
+let boardid = "" // ID of the board to control
+let name = "" // Server-given name
+let joinMessage = "" // Returned message from join attempt
+let joinState = false // Returned status from join attempt
 
-socket.on("connect", () => {
-    console.log("Connected.")
-})
+// TODO: delete this mess
+class GlobalState {
+    constructor(init) {
+        this.value = init
+    }
+}
+let globalState = new GlobalState("intro")
+
+const introRoot = e(Intro, {"title":"Block Party", "state":globalState}, null)
+const waitRoot = e(PlayerName, {"state":globalState}, null)
+const playRoot = e(Controller, {"state":globalState}, null)
 
 socket.on("start game", (data) => {
-    console.log("Game start event")
+    globalState.value = "play"
 })
 
-socket.on("disconnect", () => {
-    console.log("Disconnected")
-})
+/**
+ * Join acknowledgement function.
+ */
+function joinAck(success, message, bid) {
+    console.log(success)
+    console.log(message)
+    joinState = success
+    if (success) {
+        boardid = bid
+        name = message
+        globalState.value = "wait"
+        ReactDOM.render(waitRoot, document.getElementById("wait"))
+    } else {
+        joinMessage = message
+    }
+}
 
+/**
+ * Send user input to server.
+ */
 function sendInput(command) {
     if (socket) {
         socket.emit("input", JSON.stringify({
@@ -30,21 +55,25 @@ function sendInput(command) {
     }
 }
 
+/**
+ * Send join room request to server.
+ */
 function sendJoin(rid) {
     if (socket) {
         outRid = rid.replace(/\s/g, "")
         roomid = outRid
         console.log(`Joining ${outRid}`)
-        socket.emit("join", JSON.stringify({"room": outRid}))
+        socket.emit("join", JSON.stringify({"room": outRid}), joinAck)
     }
 }
 
-function Intro({ title }) {
-    const [visible, setVisible] = React.useState(true)
+function Intro({ title, state }) {
     const [roomId, setRoomId] = React.useState("")
+    const [visible, setVisible] = React.useState(true)
 
     const handleJoin = () => {
         sendJoin(roomId)
+        setVisible(false)
     }
 
     const form =
@@ -60,36 +89,42 @@ function Intro({ title }) {
                         "placeholder":"Room ID",
                         "onChange":(e) => setRoomId(e.target.value)
                     }
-                )
+                ),
+                e(Reactstrap.FormText, null, `You can host a game at ${window.location}/host`),
             ),
-            e(Reactstrap.Button, {"onClick":() => handleJoin()}, "Join Game"),
+            e(Reactstrap.Button, {"onClick":(e) => handleJoin()}, "Join Game")
         )
     return visible ? form : null
 }
 
+function PlayerName({ state }) {
+    return e(Reactstrap.Label, null,
+            e("h1", {"className":"display-3"}, `You are ${name}`))
+}
+
 function ControllerBtn({ name, display, className }) {
-    return e(Reactstrap.Button,
+    return (e("div",
         {
-            "className": className || `bt-${name}`,
+            "className": "bt " + (className || `bt-${name}`),
             "onClick": () => sendInput(name)
         },
         display
-    )
+    ))
 }
 
-function Controller() {
-    return (
-        e("div", null, 
+function Controller({ state }) {
+    return state.value ? (
+        e("div", {"className":"bt-grid-container"}, 
             e(ControllerBtn, {"name":"left", "display":"Left"}),
             e(ControllerBtn, {"name":"right", "display":"Right"}),
             e(ControllerBtn, {"name":"soft_drop", "display":"Down", "className":"bt-soft"}),
-            e(ControllerBtn, {"name":"hard", "display":"Drop"}),
+            e(ControllerBtn, {"name":"hard_drop", "display":"Drop", "className": "bt-hard"}),
             e(ControllerBtn, {"name":"rotate_cw", "display":"A", "className":"bt-a"}),
             e(ControllerBtn, {"name":"rotate_ccw", "display":"B", "className":"bt-b"}),
             e(ControllerBtn, {"name":"hold", "display":"Hold"}),
         )
-    )
+    ) : null
 }
 
-ReactDOM.render(e(Intro, {"title":"Block Party"}, null), document.getElementById("intro"))
-ReactDOM.render(e(Controller, null, null), document.getElementById("play"))
+ReactDOM.render(introRoot, document.getElementById("intro"))
+ReactDOM.render(playRoot, document.getElementById("play"))

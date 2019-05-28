@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Block Party Host</title>
-    <link rel="stylesheet" type="text/css" href="css/host.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
 </head>
 <body>
     <div id="load">
@@ -10,11 +10,18 @@
         <p style="font-size:xx-large; text-align:center;" class="visible" id="roomid">Loading room ID...</p>
         <small>Yeah the ID is super long. Players connect to:</small><br>
         <span style="font-size:larger">blockpartyapcsa.herokuapp.com/</span><br>
+        <button onclick="sendReady()">Ready</button>
+        <span id="readyMessage"></span>
     </div>
-    <div id="output" style="width:100%;height:100%"></div>
+    <div id="output"></div>
+    <!--<script crossorigin src="https://unpkg.com/react@16/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-transition-group/4.0.1/react-transition-group.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reactstrap/4.8.0/reactstrap.min.js"></script>
+    -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.1.2/howler.core.min.js"></script>
-    <script src="js/two.js"></script>
+    <script src="js/two.min.js"></script>
     <script src="js/host.js"></script>
 </body>
 </html>

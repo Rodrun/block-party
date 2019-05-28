@@ -23,6 +23,7 @@ DEAD_TIME = 1 # Seconds to check for dead games
 EXPIRE_TIME = 60 * 6 # Seconds until a game can be considered for death,
                      # a game is 'dead' when it has been alive for this amount
                      # of time, and 'running' is False.
+NAMES = ["Left Board", "Right Board"]
 
 new_q = Queue() # New host queue
 inp_q = Queue() # Input queue
@@ -70,16 +71,30 @@ def pageWorker():
     @sockets.on("host", namespace="/host")
     def host():
         hid = request.sid
-        print(f"New host {hid}")
         with room_lock:
             if len(rooms) < THREADS_LIMIT:
                 uid = uuid()[:10] # More chance of duplicate
                                   # But 'rare enough'
-                print(f"UUID generated: {uid}")
                 join_room(uid)
                 new_q.put(uid)
             else:
                 print("Warning: maximum capacity reached for game threads")
+
+    @sockets.on("ready", namespace="/host")
+    def ready(hid):
+        """When the host is ready to begin the match.
+        Will only start the match if 2 players have joined.
+        Returns (boolean, message) to client, where boolean is True when
+        the game is starting.
+        """
+        with room_lock:
+            if not hid in rooms:
+                return False, "Invalid room"
+            elif len(rooms[hid].boards) < 2:
+                return False, "Need 2 players to start"
+            else:
+                rooms[hid].state_q.put("start")
+                return True, "Starting game"
 
     @sockets.on_error_default
     def all_error_handler(e):
@@ -90,31 +105,26 @@ def pageWorker():
         """
         Handle player joining room. Data should be an object with:
             room - Room ID to join.
+        Returns (boolean, message, [bid]) to client. Where the boolean is
+        True when the client has successfully joined the room. bid is only
+        returned when the client is in the room.
         """
         try:
             data = loads(data)
             room_id = str(data["room"])
             with room_lock:
                 if room_id not in rooms:
-                    print(f"{room_id} is not a valid room!")
-                    return False
-            join_room(room_id)
-            board_id = request.sid
-            ret_data = {
-                "room": room_id,
-                "bid": board_id
-            }
-            print(f"Player joined room: {ret_data}")
-
-            # Add to room
-            with room_lock:
+                    return False, "Invalid Room"
+                elif len(rooms[room_id].boards) >= 2:
+                    return False, "Full Room"
+                join_room(room_id)
+                board_id = request.sid
                 room = rooms[room_id]
                 room.boards[board_id] = room.new_board()
-                if len(room.boards) >= 2:
-                    print(f"Sending start signal to {room_id}")
-                    room.state_q.put("start")
+                return True, NAMES[len(room.boards) - 1], board_id
         except Exception as e:
             print(f"An error occurred on join: {e}")
+            return False, "Error"
 
     @sockets.on("leave")
     def leave(data):
@@ -138,7 +148,12 @@ def pageWorker():
         try:
             formatted = loads(msg)
             formatted["bid"] = request.sid
-            inp_q.put(formatted)
+            #inp_q.put(formatted)
+            if not contains(inp, ["room", "bid", "command"]):
+                return
+            with room_lock:
+                if inp["room"] in rooms:
+                    rooms[inp["room"]].boards[inp["bid"]].performInput(inp["command"])
         except Exception as err:
             print(f"Input error: {err}")
     
@@ -162,6 +177,7 @@ class GameThread(Thread):
         self._blocks = blocks
         self._frames = frames
         self.boards = {} # Keys will be board ID (bid)
+        self.losses = 0 # When 2, end game
         self.state_q = state_q if state_q else Queue()
         self.input_q = input_q if input_q else Queue()
         self.running = False # Game active?
@@ -171,7 +187,7 @@ class GameThread(Thread):
 
     def board_update(self):
         """Update all player boards.
-        Returns list of dictionary of board IDs and their raw grid data. REady
+        Returns list of dictionary of board IDs and their raw grid data. Ready
         to send to host client in following JSON format:
         {
             "bid": Str,
@@ -224,10 +240,6 @@ class GameThread(Thread):
             current = self.board_update()
             if current != last:
                 sockets.emit("update", current, room=self.name, namespace="/host")
-                #out_q.put({
-                #    "room": self.name,
-                #    "data": current
-                #})
             time.sleep(.016)
 
     def destroy(self):
@@ -274,25 +286,6 @@ def restartingThread():
                 print("Warning: maximum capacity reached for game threads")
 
 
-def inputWorker():
-    """Distribute the inputs to their respective room and boards.
-    Expected input format (JSON blob).
-    {
-        "room": String,
-        "bid": String,
-        "command": String
-    }
-    """
-    print("Starting input worker...")
-    while True:
-        inp = inp_q.get()
-        if not contains(inp, ["room", "bid", "command"]):
-            continue
-        with room_lock:
-            if inp["room"] in rooms:
-                rooms[inp["room"]].boards[inp["bid"]].performInput(inp["command"])
-
-
 def contains(target: dict, keyList: list) -> bool:
     """Check if all the keys in keyList are in target."""
     for key in keyList:
@@ -302,15 +295,7 @@ def contains(target: dict, keyList: list) -> bool:
 
 page_thread = Thread(target=pageWorker, name="page")
 handler_thread = Thread(target=restartingThread, name="handler")
-input_thread = Thread(target=inputWorker, name="input")
 kill_thread = Thread(target=deadCheckWorker, name="killer")
 page_thread.start()
 handler_thread.start()
-input_thread.start()
 kill_thread.start()
-"""
-eventlet.spawn(pageWorker)
-eventlet.spawn(restartingThread)
-eventlet.spawn(inputWorker)
-eventlet.spawn(deadCheckWorker)
-"""

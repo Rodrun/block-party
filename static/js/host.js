@@ -1,21 +1,25 @@
 let canvas = document.getElementById("output")
-let twoConfig = { width: window.width, height: window.height, fullscreen: true }
+let twoConfig = { width: window.width, height: window.height , fullscreen: false }
 let two = new Two(twoConfig).appendTo(canvas)
 const waitSound = new Howl({
     src: ["music/Dance_of_the_salty_boys.ogg"],
-    loop: true
+    loop: true,
+    volume: 0.3
 })
 const gameSound = new Howl({
     src: ["music/Tetris_D_Theme.ogg"],
-    loop: true
+    loop: true,
+    volume: 0.4
 })
 const socket = io("/host")
 
-const WIDTH = two.height / 20
+const WIDTH = two.height / 20 // Wontfix
 let fields = [
-    new field(0, 0, WIDTH),
-    new field(WIDTH * 10 + 10, 0, WIDTH)
+    new field(WIDTH, WIDTH, WIDTH),
+    new field(WIDTH * 10 + WIDTH, WIDTH, WIDTH)
 ] // Fields to be drawn; for now just 2
+
+let roomId = ""
 
 socket.on("connect", () => {
     waitSound.play()
@@ -24,19 +28,19 @@ socket.on("connect", () => {
 socket.emit("host")
 
 socket.on("start game", () => {
+    const elem = document.getElementById("load")
+    elem.classList.add("hidden")
+
     waitSound.stop()
     gameSound.play()
 })
 
 socket.on("host greet", (data) => {
-    document.getElementById("roomid").innerHTML = `${spaceOut(data["room_id"])}`
+    roomId = data["room_id"]
+    document.getElementById("roomid").innerHTML = `${spaceOut(roomId)}`
 })
 
 socket.on("update", (data) => {
-    const elem = document.getElementById("load")
-    if (!elem.classList.contains("hidden")) {
-        elem.classList.add("hidden")
-    }
     two.clear()
     // data is expected to be a list of objects, each with
     // a board ID and grid data (2D array)
@@ -48,8 +52,14 @@ socket.on("update", (data) => {
         fields[i].draw(grid)
     }
     two.update()
-})    
+})
 
+
+function sendReady() {
+    if (socket) {
+        socket.emit("ready", roomId)
+    }
+}
 
 /**
  * Add spaces every breaks characters in a string.
